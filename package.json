@@ -1,0 +1,33 @@
+{
+  "name": "irin-lang",
+  "version": "0.0.1",
+  "description": "IRIN (Indent to Recognize for Intelligent Natural language) is a scripting language of chatterbots, make you easier to create chatterbot. ",
+  "main": "lib/irin-lang.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureexe/irin-lang.git"
+  },
+  "keywords": [
+    "bot",
+    "chatbot",
+    "chatterbot",
+    "aiml",
+    "artificial",
+    "intelligence",
+    "chatscript",
+    "buddyscript"
+  ],
+  "author": "Pakkapon Phongthawee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pureexe/irin-lang/issues"
+  },
+  "homepage": "https://github.com/pureexe/irin-lang#readme",
+  "devDependencies": {
+    "coffee-script": "^1.10.0",
+    "gulp": "^3.9.0"
+  }
+}
