@@ -3,5 +3,7 @@ fs = require "fs"
 
 fs.readFile 'brain/prototype.irin', 'utf8', (err,data) ->
   bot = new irin(data)
-  console.log bot.reply("กินข้าวหรือยัง")
-  console.log bot.reply("ข้าวอร่อยไหม")
+  #console.log bot.reply("กินข้าวหรือยัง")
+  #console.log bot.reply("ข้าวอร่อยไหม")
+  #console.log bot.reply("หิวเยอะไหม")
+  console.log(bot.reply("เหมือนจะงงมาก"));

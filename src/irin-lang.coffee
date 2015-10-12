@@ -1,7 +1,6 @@
 """
 Todolist:
-  - testExpression
-  - mergeExpression
+  - function
   - fileheader
   - much & more
 """
@@ -77,34 +76,82 @@ class irin
     return resultGraph
 
   testExpression: (@text,@expression)->
-    #Todo : expression text for selectChild
+    unuseArray = []
+    for ch in @expression
+      if ch is "("
+        unuseArray.push("(");
+      else if ch is "["
+        unuseArray.push("[");
+    @expression = @expression.replace(new RegExp("\\s*\\[","g"), "(")
+    @expression = @expression.replace(new RegExp("\\]\\s*","g"), ")?")
+    @expression = @expression.replace(new RegExp("\\s*\\(","g"), "(")
+    @expression = @expression.replace(new RegExp("\\)\\s*","g"), ")")
+    @expression = @expression.replace(new RegExp("\\s*\\*\\s*","g"),"(.+)")
+    processed = ""
+    isOpenBucket = false
+    stackOpenBucket = 0
+    # Remove Neet bracket cause it will make return error
+    for ch in @expression
+      if ch is "("
+        if isOpenBucket
+          stackOpenBucket++
+          continue
+        else
+          isOpenBucket = true
+      else if ch is ")"
+        if stackOpenBucket > 0
+          stackOpenBucket--
+          continue
+        else
+          isOpenBucket = false;
+      processed+=ch
+    processed = new RegExp(processed)
+    if not processed.test(@text)
+      return undefined
+    parsedArray = @text.match(processed)
+    parsedArray.splice(0,1)
+    while (index = unuseArray.indexOf("[")) > -1
+      parsedArray.splice(index,1)
+      unuseArray.splice(index,1)
+    resultArray = []
+    for element in parsedArray
+      resultArray.push(element.trim())
+    return resultArray
 
-  mergeExpression: (@expression,@info)->
+  mergeExpression: (@expression,@rData)->
     #Todo : merge array to answer before output
+    buffer = ""
+    openBracket = false
+    for ch in @expression
+      if ch is "{"
+        openBracket = true
+      else if ch is "}"
+        console.log @expression.slice(0, @expression.indexOf("{"))
+        @expression = @expression.slice(0, @expression.indexOf("{"))+@rData[parseInt(buffer)-1]+@expression.slice(@expression.indexOf("}")+1)
+        openBracket = false
+        buffer = ""
+      else if openBracket
+        buffer+=ch
+    return @expression
 
   selectChild: (@text, @head)->
-    for child in @data.head.next
+    for child in @head.next
       #this condition need to change to regular expression "later"
-      if @text == child.text or child.text== "*"
+      if answerData = @testExpression(@text,child.text)
         select = Math.floor(Math.random()*child.next.length)
-        return child.next[select]
+        return {node:child.next[select],data:answerData}
     return undefined
 
   reply: (@text)->
-    answerNode = @selectChild(@text,@data.head)
-    if answerNode
-      @data.head = answerNode
-      return answerNode.text
+    answer = @selectChild(@text,@data.head)
+    if answer
+      @data.head = answer.node
+      return @mergeExpression(answer.node.text,answer.data)
     @data.head = @data.graph
     answerNode = @selectChild(@text,@data.head)
-    if answerNode
-      @data.head = answerNode
-      return answerNode.text
+    if answer
+      @data.head = answer.node
+      return @mergeExpression(answer.node.text,answer.data)
     return "[Log:Error] answer not found"
 
 module.exports = irin
-  #This is expression test
-  #"hello pure kung".match(/hello (.+) kung/) // hello * kung
-  #"hello mu kung".match(/hello (box|des|mu)? kung/) // hello [box|des|mu] kung
-  #"butt no home".match(new RegExp("(.+)?no(.+)")) // [*] no *
-  #need to replace \s* on blankspance?
