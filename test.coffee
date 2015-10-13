@@ -6,4 +6,7 @@ fs.readFile 'brain/prototype.irin', 'utf8', (err,data) ->
   #console.log bot.reply("กินข้าวหรือยัง")
   #console.log bot.reply("ข้าวอร่อยไหม")
   #console.log bot.reply("หิวเยอะไหม")
-  console.log(bot.reply("เหมือนจะงงมาก"));
+  #console.log(bot.reply("เหมือนจะงงมาก"))
+  console.log(bot.reply("สวัสดีจ้า"))
+  console.log(bot.reply("กำ"))
+  console.log(bot.reply("คิิคิ"))

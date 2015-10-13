@@ -1,6 +1,6 @@
 """
 Todolist:
-  - function
+  - syntax check before run
   - fileheader
   - much & more
 """
@@ -29,6 +29,10 @@ class irin
     currentIndent = 0
     splitSteam = @steam.split "\n"
     multiLineComment = false
+    functionObject = {}
+    functionHead = []
+    isAddtoFunction = false
+    currentAddtoFunction = ""
     for text in splitSteam
       #remove Single line comment
       if text.indexOf("#") > -1
@@ -55,24 +59,78 @@ class irin
         continue
       text = text.trim()
       textIndent = textIndent/@config.indent.len
-      if textIndent == currentIndent
-        currentGraph.push {text:text,depth:textIndent,next:[]}
-        #pointer link to same child for multiqustion on same answer
-        if currentGraph.length > 1
-          currentGraph[currentGraph.length - 2].next = currentGraph[currentGraph.length - 1].next
-      #travle deeper
-      else if textIndent > currentIndent
-        currentIndent = textIndent
-        currentGraph = currentGraph[currentGraph.length-1].next
-        currentGraph.push {text:text,depth:textIndent,next:[]}
-      #end of route so restart new at root
+
+      #function parse
+      if text.substring(0,2) == "->"
+        text = text.substring(2,text.length)
+        text = text.trim()
+        if textIndent == 0
+        #declarefunction
+          if not functionObject[text]
+            functionObject[text] = []
+          currentAddtoFunction = text
+          isAddtoFunction = true
+          functionHead = functionObject[text]
+          continue
+        #activefunction
+        else
+          if currentIndent == textIndent
+            cloneObj.depth = currentIndent
+            currentGraph.push(functionObject[text].next)
+          else if textIndent>currentIndent
+            if not functionObject[text]
+              functionObject[text] = []
+            currentGraph[currentGraph.length-1].next = functionObject[text]
+            continue
+      #add to graph
+      #add to functionObject
+      if isAddtoFunction
+        if textIndent is currentIndent
+          functionHead.push {text:text,depth:textIndent,next:[]}
+          if functionHead.length > 1
+            functionHead[functionHead.length - 2].next = functionHead[functionHead.length - 1].next
+        else if textIndent > currentIndent
+          currentIndent = textIndent
+          functionHead = functionHead[functionHead.length-1].next
+          functionHead.push {text:text,depth:textIndent,next:[]}
+        else
+          # if textIndent is zero so it end of function declare
+          if textIndent == 0
+            currentAddtoFunction = ""
+            isAddtoFunction = false
+            currentGraph = resultGraph
+            currentIndent = 0
+            while textIndent != currentIndent
+              currentIndent++
+              currentGraph = currentGraph[currentGraph.length-1].next
+            currentGraph.push {text:text,depth:textIndent,next:[]}
+          else
+            functionHead = resultGraph
+            currentIndent = 0
+            while textIndent != currentIndent
+              currentIndent++
+              functionHead = functionHead[functionHead.length-1].next
+            functionHead.push {text:text,depth:textIndent,next:[]}
+      #add to resultGraph
       else
-        currentGraph = resultGraph
-        currentIndent = 0
-        while textIndent != currentIndent
-          currentIndent++
+        if textIndent is currentIndent
+          currentGraph.push {text:text,depth:textIndent,next:[]}
+          #pointer link to same child for multiqustion on same answer
+          if currentGraph.length > 1
+            currentGraph[currentGraph.length - 2].next = currentGraph[currentGraph.length - 1].next
+        #travle deeper
+        else if textIndent > currentIndent
+          currentIndent = textIndent
           currentGraph = currentGraph[currentGraph.length-1].next
-        currentGraph.push {text:text,depth:textIndent,next:[]}
+          currentGraph.push {text:text,depth:textIndent,next:[]}
+        #end of route so restart new at root
+        else
+          currentGraph = resultGraph
+          currentIndent = 0
+          while textIndent != currentIndent
+            currentIndent++
+            currentGraph = currentGraph[currentGraph.length-1].next
+          currentGraph.push {text:text,depth:textIndent,next:[]}
     return resultGraph
 
   testExpression: (@text,@expression)->
@@ -148,7 +206,7 @@ class irin
       @data.head = answer.node
       return @mergeExpression(answer.node.text,answer.data)
     @data.head = @data.graph
-    answerNode = @selectChild(@text,@data.head)
+    answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node
       return @mergeExpression(answer.node.text,answer.data)
