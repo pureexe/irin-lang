@@ -1,6 +1,7 @@
 """
 Todolist:
   - syntax check before run
+  - testExpression still buggggggggyyyyyyy
   - fileheader
   - much & more
 """
@@ -22,7 +23,8 @@ class irin
     @data.graph = @parse(@steam)
     @data.graph = {next:@data.graph}
     @data.head = @data.graph
-
+  getGraph:()->
+    return @data.graph
   parse: (@steam)->
     resultGraph = []
     currentGraph = resultGraph
@@ -134,38 +136,40 @@ class irin
     return resultGraph
 
   testExpression: (@text,@expression)->
+    # still working not correctly 
+    #(blankspace is a big problem)
     unuseArray = []
-    for ch in @expression
-      if ch is "("
-        unuseArray.push("(");
-      else if ch is "["
-        unuseArray.push("[");
-    @expression = @expression.replace(new RegExp("\\s*\\[","g"), "(")
-    @expression = @expression.replace(new RegExp("\\]\\s*","g"), ")?")
-    @expression = @expression.replace(new RegExp("\\s*\\(","g"), "(")
-    @expression = @expression.replace(new RegExp("\\)\\s*","g"), ")")
-    @expression = @expression.replace(new RegExp("\\s*\\*\\s*","g"),"(.+)")
     processed = ""
-    isOpenBucket = false
-    stackOpenBucket = 0
-    # Remove Neet bracket cause it will make return error
+    isInbracket = false
+    isBeginWithOptional = false
+    if @expression[0] == "["
+      isBeginWithOptional = true
     for ch in @expression
-      if ch is "("
-        if isOpenBucket
-          stackOpenBucket++
+      if ch == " " and isBeginWithOptional
+          isBeginWithOptional = false
           continue
+      else if ch == "["
+        processed += "("
+        isInbracket = true
+        unuseArray.push("[");
+      else if ch == "]"
+        processed += ")?"
+        isInbracket = false
+      else if ch == "*"
+        if isInbracket
+          processed+=".+"
         else
-          isOpenBucket = true
-      else if ch is ")"
-        if stackOpenBucket > 0
-          stackOpenBucket--
-          continue
-        else
-          isOpenBucket = false;
-      processed+=ch
+          processed+="(.+)"
+      else if ch == "("
+        unuseArray.push("(");
+        processed+="("
+      else
+        processed+=ch
+    #np = processed
     processed = new RegExp(processed)
     if not processed.test(@text)
       return undefined
+    #console.log np
     parsedArray = @text.match(processed)
     parsedArray.splice(0,1)
     while (index = unuseArray.indexOf("[")) > -1
@@ -184,7 +188,6 @@ class irin
       if ch is "{"
         openBracket = true
       else if ch is "}"
-        console.log @expression.slice(0, @expression.indexOf("{"))
         @expression = @expression.slice(0, @expression.indexOf("{"))+@rData[parseInt(buffer)-1]+@expression.slice(@expression.indexOf("}")+1)
         openBracket = false
         buffer = ""
