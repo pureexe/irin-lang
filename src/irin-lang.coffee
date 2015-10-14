@@ -5,13 +5,6 @@ Todolist:
   - fileheader
   - much & more
 """
-String.prototype.nthIndexOf = (pattern, n) ->
-    i = -1;
-    while n-- and i++ < this.length
-        i = this.indexOf(pattern, i)
-        if i < 0
-          break
-    return i
 
 class irin
   data:
