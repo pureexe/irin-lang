@@ -5,6 +5,14 @@ Todolist:
   - fileheader
   - much & more
 """
+String.prototype.nthIndexOf = (pattern, n) ->
+    i = -1;
+    while n-- and i++ < this.length
+        i = this.indexOf(pattern, i)
+        if i < 0
+          break
+    return i
+
 class irin
   data:
     graph: []
@@ -136,25 +144,36 @@ class irin
     return resultGraph
 
   testExpression: (@text,@expression)->
-    # still working not correctly 
+    # maybe still bug
     #(blankspace is a big problem)
     unuseArray = []
     processed = ""
     isInbracket = false
-    isBeginWithOptional = false
-    if @expression[0] == "["
-      isBeginWithOptional = true
+    isSkipspace = false
+    isCutLastSpace = false
+    if @expression[@expression.length-1] == "]"
+      lastSpaceLocation = 0
+      lastSpaceLocation = @expression.lastIndexOf("[")-1
+      if(@expression[lastSpaceLocation]==" ")
+        @expression = @expression.slice(0,lastSpaceLocation)+@expression.slice(lastSpaceLocation+1,@expression.length)
+        isCutLastSpace = true
     for ch in @expression
-      if ch == " " and isBeginWithOptional
-          isBeginWithOptional = false
+      #avoid space after optional expression
+      if ch == " " and isSkipspace
+          isSkipspace = false
           continue
+      else if ch ==" "
+        isSkipspace = false
+        processed += ch
+        continue
       else if ch == "["
-        processed += "("
+        processed += "( |"
         isInbracket = true
         unuseArray.push("[");
       else if ch == "]"
         processed += ")?"
         isInbracket = false
+        isSkipspace = true
       else if ch == "*"
         if isInbracket
           processed+=".+"
@@ -165,15 +184,22 @@ class irin
         processed+="("
       else
         processed+=ch
-    #np = processed
+    nProcessed = processed
     processed = new RegExp(processed)
     if not processed.test(@text)
       return undefined
-    #console.log np
     parsedArray = @text.match(processed)
+    #fix wrong laststring word tokenization detect on ELIZA
+    if isCutLastSpace and parsedArray[parsedArray.length-1] != undefined
+      index = nProcessed.lastIndexOf("(")
+      nProcessed = nProcessed.slice(0,index)+" "+nProcessed.slice(index,nProcessed.length)
+      processed = new RegExp(nProcessed)
+      if not processed.test(@text)
+        return undefined
+      parsedArray = @text.match(processed)
     parsedArray.splice(0,1)
     while (index = unuseArray.indexOf("[")) > -1
-      parsedArray.splice(index,1)
+      parsedArray.splice(index,2)
       unuseArray.splice(index,1)
     resultArray = []
     for element in parsedArray
