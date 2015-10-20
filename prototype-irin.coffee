@@ -15,4 +15,5 @@ runBot = ()->
       runBot()
 fs.readFile 'brain/prototype.irin', 'utf8', (err,data) ->
   bot = new irin(data)
+  console.log bot.toRegular("no")
   runBot()

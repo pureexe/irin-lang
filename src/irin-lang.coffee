@@ -1,20 +1,29 @@
-"""
-Todolist:
-  - syntax check before run
-  - testExpression still buggggggggyyyyyyy
-  - fileheader
-  - much & more
-"""
+##
+# IRIN project
+# @class
+# @todo Syntax check before parse
+# @todo file header read
+# @todo much and more
+# @public
+#
 
 class irin
   data:
     graph: []
     head: []
-
+    global: {}
   config:
     indent:
       len: 2
+  env:
+    runtime = ""
 
+  ##
+  # just a simple class constructor
+  # @todo remove steam just only input and import from parse method only
+  # @param {string} steam is input script
+  # @param {string} option is configulation
+  #
   constructor: (@steam, @option) ->
     #if have custom config then load custom config
     if @option and @option.indent
@@ -24,8 +33,18 @@ class irin
     @data.graph = @parse(@steam)
     @data.graph = {next:@data.graph}
     @data.head = @data.graph
+  ##
+  # export all data graph for debuging
+  # @todo remove on release code
   getGraph:()->
     return @data.graph
+  ##
+  # Convert from irin script to data graph
+  # @todo make parse to async
+  # @todo add header read feature
+  # @todo syntax check before parse
+  # @param {string} expression - the expression
+  #
   parse: (@steam)->
     resultGraph = []
     currentGraph = resultGraph
@@ -136,69 +155,75 @@ class irin
           currentGraph.push {text:text,depth:textIndent,next:[]}
     return resultGraph
 
-  testExpression: (@text,@expression)->
-    # maybe still bug
-    #(blankspace is a big problem)
-    unuseArray = []
-    processed = ""
-    isInbracket = false
-    isSkipspace = false
-    isCutLastSpace = false
-    if @expression[@expression.length-1] == "]"
-      lastSpaceLocation = 0
-      lastSpaceLocation = @expression.lastIndexOf("[")-1
-      if(@expression[lastSpaceLocation]==" ")
-        @expression = @expression.slice(0,lastSpaceLocation)+@expression.slice(lastSpaceLocation+1,@expression.length)
-        isCutLastSpace = true
-    for ch in @expression
-      #avoid space after optional expression
-      if ch == " " and isSkipspace
-          isSkipspace = false
-          continue
-      else if ch ==" "
-        isSkipspace = false
-        processed += ch
-        continue
-      else if ch == "["
-        processed += "( |"
-        isInbracket = true
-        unuseArray.push("[");
-      else if ch == "]"
-        processed += ")?"
-        isInbracket = false
-        isSkipspace = true
-      else if ch == "*"
-        if isInbracket
-          processed+=".+"
+  ##
+  # Convert from irin expression to regular expression
+  # @todo merge global data before change Irin Expression to Regular Expression
+  # @param {string} expression - the expression
+  #
+  toRegular:(expression)->
+    regularExp = ""
+    expression = expression.replace(/\*/g, "(.+)")
+    i = 0
+    while i < expression.length
+      if expression[i] == "["
+        j = 0
+        while expression[i+j] != "]"
+          j++
+        optionals = expression.substring(i+1,i+j).split("|")
+        if i+j<expression.length and expression[i+j+1]==" "
+          k = 0
+          while k < optionals.length
+            optionals[k] = optionals[k]+"(?:\\s|\\b)+"
+            k++
+          j++
+        if i > 0 and expression[i-1]==" "
+          regularExp = regularExp.trim()
+          k = 0
+          while k < optionals.length
+            optionals[k] = "(?:\\s|\\b)+"+optionals[k]
+            k++
+          optionals.push("(?:\\b|\\s)+")
         else
-          processed+="(.+)"
-      else if ch == "("
-        unuseArray.push("(");
-        processed+="("
+          optionals.unshift("")
+        optionals = optionals.join("|")
+        optionals = optionals.replace(new RegExp(@escape("(.+)"), "g"),"(?:.+)")
+        regularExp+="(?:"+optionals+")"
+        i+=j+1
       else
-        processed+=ch
-    nProcessed = processed
-    processed = new RegExp(processed)
-    if not processed.test(@text)
-      return undefined
-    parsedArray = @text.match(processed)
-    #fix wrong laststring word tokenization detect on ELIZA
-    if isCutLastSpace and parsedArray[parsedArray.length-1] != undefined
-      index = nProcessed.lastIndexOf("(")
-      nProcessed = nProcessed.slice(0,index)+" "+nProcessed.slice(index,nProcessed.length)
-      processed = new RegExp(nProcessed)
-      if not processed.test(@text)
-        return undefined
-      parsedArray = @text.match(processed)
-    parsedArray.splice(0,1)
-    while (index = unuseArray.indexOf("[")) > -1
-      parsedArray.splice(index,2)
-      unuseArray.splice(index,1)
-    resultArray = []
-    for element in parsedArray
-      resultArray.push(element.trim())
-    return resultArray
+        regularExp+=expression[i]
+        i++
+    return "^"+regularExp+"$"
 
+  ##
+  # escape regular expression unsafe string
+  # @param {string} expression - the expression
+  #
+  escape: (expression) ->
+    unsafe = "\\.+*?[^]$(){}=!<>|:".split("")
+    for char in unsafe
+      expression = expression.replace(new RegExp("\\#{char}", "g"), "\\#{char}")
+    return expression
+
+  ##
+  # Try to Match expression
+  # @param {string} expression - the expression
+  # @param {string} input - input to test expression
+  #
+  match:(input,expression)->
+    cExp = new RegExp(@toRegular(expression))
+    result = input.match(cExp)
+    if result
+      result.shift()
+      return result
+    else
+      return undefined
+
+  ##
+  # Merge reply expression with reply data
+  # @todo change it to better version Merge
+  # @param {string} expression - the expression
+  # @param {string} rData - the list of reply array
+  #
   mergeExpression: (@expression,@rData)->
     #Todo : merge array to answer before output
     buffer = ""
@@ -214,14 +239,25 @@ class irin
         buffer+=ch
     return @expression
 
+  ##
+  # Loop in current head child if found match expression then random answer from child's child node
+  # @private
+  # @param {string} expression - the expression
+  # @param {string} rData - the list of reply array
+  #
   selectChild: (@text, @head)->
     for child in @head.next
       #this condition need to change to regular expression "later"
-      if answerData = @testExpression(@text,child.text)
+      if answerData = @match(@text,child.text)
         select = Math.floor(Math.random()*child.next.length)
         return {node:child.next[select],data:answerData}
     return undefined
 
+  ##
+  # findReply from data graph
+  # @todo make reply to async
+  # @param {string} input text
+  #
   reply: (@text)->
     answer = @selectChild(@text,@data.head)
     if answer
