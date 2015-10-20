@@ -6,8 +6,7 @@
 # @todo much and more
 # @public
 #
-
-class irin
+class Irin
   data:
     graph: []
     head: []
@@ -58,7 +57,7 @@ class irin
     for text in splitSteam
       #remove Single line comment
       if text.indexOf("#") > -1
-        text = text.substring(0,text.indexOf("#"));
+        text = text.substring(0,text.indexOf("#"))
       #remove Multi line Comment
       if multiLineComment
         if text.indexOf("\"\"\"") == -1
@@ -69,9 +68,10 @@ class irin
       if text.indexOf("\"\"\"")> -1
         if not multiLineComment
           commentStartPos = text.indexOf("\"\"\"")
-          text = text.slice(0, commentStartPos) + text.slice(commentStartPos+3);
+          text = text.slice(0, commentStartPos) + text.slice(commentStartPos+3)
           if text.indexOf("\"\"\"")> -1
-            text = text.slice(0, commentStartPos) + text.slice(text.indexOf("\"\"\"")+3);
+            text = text.slice(0, commentStartPos)
+            + text.slice(text.indexOf("\"\"\"")+3)
           else
             text = text.substring(0,commentStartPos)
             multiLineComment = true
@@ -110,7 +110,8 @@ class irin
         if textIndent is currentIndent
           functionHead.push {text:text,depth:textIndent,next:[]}
           if functionHead.length > 1
-            functionHead[functionHead.length - 2].next = functionHead[functionHead.length - 1].next
+            functionHead[functionHead.length - 2].next =
+              functionHead[functionHead.length - 1].next
         else if textIndent > currentIndent
           currentIndent = textIndent
           functionHead = functionHead[functionHead.length-1].next
@@ -139,7 +140,8 @@ class irin
           currentGraph.push {text:text,depth:textIndent,next:[]}
           #pointer link to same child for multiqustion on same answer
           if currentGraph.length > 1
-            currentGraph[currentGraph.length - 2].next = currentGraph[currentGraph.length - 1].next
+            currentGraph[currentGraph.length - 2].next =
+              currentGraph[currentGraph.length - 1].next
         #travle deeper
         else if textIndent > currentIndent
           currentIndent = textIndent
@@ -206,6 +208,7 @@ class irin
 
   ##
   # Try to Match expression
+  # @todo need to make Captialize and non Captialize match
   # @param {string} expression - the expression
   # @param {string} input - input to test expression
   #
@@ -232,7 +235,9 @@ class irin
       if ch is "{"
         openBracket = true
       else if ch is "}"
-        @expression = @expression.slice(0, @expression.indexOf("{"))+@rData[parseInt(buffer)-1]+@expression.slice(@expression.indexOf("}")+1)
+        @expression = @expression.slice(0, @expression.indexOf("{"))
+        + @rData[parseInt(buffer)-1]
+        + @expression.slice(@expression.indexOf("}")+1)
         openBracket = false
         buffer = ""
       else if openBracket
@@ -240,7 +245,8 @@ class irin
     return @expression
 
   ##
-  # Loop in current head child if found match expression then random answer from child's child node
+  # Loop in current head child if found match expression
+  # then random answer from child's child node
   # @private
   # @param {string} expression - the expression
   # @param {string} rData - the list of reply array
@@ -270,4 +276,4 @@ class irin
       return @mergeExpression(answer.node.text,answer.data)
     return "[Log:Error] answer not found"
 
-module.exports = irin
+module.exports = Irin
