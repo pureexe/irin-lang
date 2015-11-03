@@ -5,7 +5,7 @@ rl = readline.createInterface
   input: process.stdin
   output: process.stdout
 console.log "=========================="
-console.log "Name : prototype"
+console.log "Name : ไอริน"
 console.log "Language : IRIN"
 console.log "=========================="
 bot = undefined

@@ -54,6 +54,7 @@ class Irin
     functionHead = []
     isAddtoFunction = false
     currentAddtoFunction = ""
+    isRunningHeader = false
     for text in splitSteam
       #remove Single line comment
       if text.indexOf("#") > -1
@@ -75,6 +76,17 @@ class Irin
           else
             text = text.substring(0,commentStartPos)
             multiLineComment = true
+      #Header read
+      if text.indexOf("---") > -1
+        if isRunningHeader
+          isRunningHeader = false
+        else
+          isRunningHeader = true
+        continue
+      if isRunningHeader
+        text = text.trim()
+        arrayText = text.split("->")
+        @data.global[arrayText[0].trim()] = arrayText[1].trim()
       #count textIndent
       textIndent = text.search /\S/
       if textIndent == -1
@@ -163,6 +175,7 @@ class Irin
   # @param {string} expression - the expression
   #
   toRegular:(expression)->
+    expression = @mergeExpression(expression)
     regularExp = ""
     expression = expression.replace(/\*/g, "(.+)")
     i = 0
@@ -235,9 +248,14 @@ class Irin
       if ch is "{"
         openBracket = true
       else if ch is "}"
-        @expression = @expression.slice(0, @expression.indexOf("{"))
-        + @rData[parseInt(buffer)-1]
-        + @expression.slice(@expression.indexOf("}")+1)
+        if isNaN(parseInt(buffer))
+          @expression = @expression.slice(0, @expression.indexOf("{"))+
+           @data.global[buffer]+
+           @expression.slice(@expression.indexOf("}")+1)
+        else
+          @expression = @expression.slice(0, @expression.indexOf("{")) +
+           @rData[parseInt(buffer)-1]+
+           @expression.slice(@expression.indexOf("}")+1)
         openBracket = false
         buffer = ""
       else if openBracket
