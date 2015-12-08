@@ -2,6 +2,7 @@
 # IRIN project
 # @class
 # @todo Syntax check before parse
+# @todo make mergeExpression support dynamic set values and inline condition
 # @todo file header read
 # @todo much and more
 # @public
@@ -40,8 +41,13 @@ class Irin
     else if typeof @file is 'function'
       callback = @file
     @env.runtime = @runtime()
-    @parse file,(err,data)->
-      console.log JSON.stringify data,null,1
+    self = @
+    @parse file,(err,cb)->
+      if cb
+        self.data.graph = {next:cb.graph}
+        self.data.head =  self.data.graph
+        self.data.global = cb.variable
+    callback()
 
   ##
   # Convert from irin script to data graph
@@ -80,6 +86,8 @@ class Irin
       readingHeader: false
       readingInclude: false
       functionObject:{}
+      functionHead:{}
+      currentFuncName:""
       graph:[]
       variable:{}
       includeVariable:[]
@@ -119,31 +127,61 @@ class Irin
           fileAddr = text.trim().substring(2,text.length).trim()
           self.parseWorker(fileAddr,stack+1,callbackListener)
           return undefined
+        if state.readingHeader and text.indexOf("<-")
+          word = text.split("<-")
+          if word.length > 2
+            ## Error more than <- in same paragraph ##
+          else
+            state.variable[word[0].trim()] = word[1].trim()
         text = text.trim()
-        ###
         ## Function parse
-        if text.substring(0,2) == "->"
+        if text.substring(0,2) == "->" and not state.readingHeader
           text = text.substring(2,text.length)
           text = text.trim()
           if state.currentIndent == 0
           #declarefunction
             if not state.functionObject[text]
               state.functionObject[text] = []
-            currentAddtoFunction = text
-            isAddtoFunction = true
-            functionHead = functionObject[text]
+            state.currentFuncName = text
+            state.isAddtoFunction = true
+            state.functionHead = state.functionObject[text]
+            state.currentLine++
             continue
-        else
-          if state.pastIndent == state.currentIndent
-            cloneObj.depth = currentIndent
-            state.currentGraph.push(state.functionObject[text].next)
-          else if state.currentIndent>state.pastIndent
+          else
             if not state.functionObject[text]
               state.functionObject[text] = []
-            state.currentGraph[state.currentGraph.length-1].next = state.functionObject[text]
+            if state.pastIndent == state.currentIndent
+              state.currentGraph.push(state.functionObject[text])
+            else if state.currentIndent>state.pastIndent
+              state.currentGraph[state.currentGraph.length-1].next = state.functionObject[text]
+            state.currentLine++
             continue
-        ## need to add to function OBJ later but i'm very tired to do it so i'm just play computer game :P
-        ###
+        if state.isAddtoFunction and state.currentIndent == 0
+          state.isAddtoFunction = false
+        if state.isAddtoFunction
+          if state.currentIndent is state.pastIndent
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+            if state.functionHead.length > 1 and state.functionHead[state.functionHead.length - 2].next.length == 0
+              state.functionHead[state.functionHead.length - 2].next =
+                state.functionHead[state.functionHead.length - 1].next
+          else if state.currentIndent > state.pastIndent
+            ## define when tab is greater
+            state.pastIndent = state.currentIndent
+            while state.functionHead[state.functionHead.length-1].next.length
+              state.functionHead = state.functionHead[state.functionHead.length-1].next
+              state.currentIndent++
+            state.functionHead = state.functionHead[state.functionHead.length-1].next
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+          else if state.currentIndent < state.pastIndent
+            ## define when tab is lesster
+            state.functionHead = state.functionObject[state.currentFuncName]
+            state.pastIndent = state.currentIndent
+            while state.currentIndent != state.pastIndent
+              state.currentIndent++
+              state.functionHead = state.functionHead[state.currentGraph.length-1].next
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+          state.currentLine++
+          continue
         ## Begin normal parse algorithm
         if state.currentIndent is state.pastIndent
           ## define when tab is equal
@@ -281,20 +319,21 @@ class Irin
   #
   mergeExpression: (@expression,@rData)->
     #Todo : merge array to answer before output
+    #Todo : make this function support dynamic set values and inline condition
     buffer = ""
-    openBracket = false
+    openBracket = 0
     for ch in @expression
       if ch is "{"
         openBracket = true
       else if ch is "}"
         if isNaN(parseInt(buffer))
           @expression = @expression.slice(0, @expression.indexOf("{"))+
-           @data.global[buffer]+
-           @expression.slice(@expression.indexOf("}")+1)
+          @data.global[buffer.trim()]+
+          @expression.slice(@expression.indexOf("}")+1)
         else
           @expression = @expression.slice(0, @expression.indexOf("{")) +
-           @rData[parseInt(buffer)-1]+
-           @expression.slice(@expression.indexOf("}")+1)
+          @rData[parseInt(buffer)-1]+
+          @expression.slice(@expression.indexOf("}")+1)
         openBracket = false
         buffer = ""
       else if openBracket
@@ -311,7 +350,7 @@ class Irin
   selectChild: (@text, @head)->
     for child in @head.next
       #this condition need to change to regular expression "later"
-      if answerData = @match(@text,child.text)
+      if answerData = @match(@text.toUpperCase(),child.text.toUpperCase())
         select = Math.floor(Math.random()*child.next.length)
         return {node:child.next[select],data:answerData}
     return undefined
@@ -322,6 +361,8 @@ class Irin
   # @param {string} input text
   #
   reply: (@text,callback)->
+    console.log "START REPLY"
+    console.log JSON.stringify @data.graph,null,1
     answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node

@@ -8,9 +8,9 @@ console.log "=========================="
 console.log "Name : prototype"
 console.log "Language : IRIN"
 console.log "=========================="
-bot = new irin 'brain/prototype.irin', ()->
-  runBot()
 runBot = ()->
   rl.question ">> ", (inp)->
     console.log bot.reply(inp)
     runBot()
+bot = new irin 'brain/en-main.irin', ()->
+  runBot()
