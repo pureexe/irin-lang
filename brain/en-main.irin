@@ -2,8 +2,8 @@
 -> brain/en-sub.irin
 name <- IRIN
 ---------
-Q
-  {name}: Hello Can i Help you?
+q
+  {name} {name} {name} {name}: Hello Can i Help you? {name<-shana}
 Hello
   hi
     ->lol

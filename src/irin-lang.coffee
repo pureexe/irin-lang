@@ -310,35 +310,54 @@ class Irin
       return result
     else
       return undefined
-
   ##
   # Merge reply expression with reply data
   # @todo change it to better version Merge
   # @param {string} expression - the expression
   # @param {string} rData - the list of reply array
   #
-  mergeExpression: (@expression,@rData)->
+  mergeExpression: (expression,rData)->
     #Todo : merge array to answer before output
     #Todo : make this function support dynamic set values and inline condition
     buffer = ""
-    openBracket = 0
-    for ch in @expression
+    stackBracket = 0
+    front = 0
+    rear = 0
+    i = 0
+    while i < expression.length
+      ch = expression[i]
       if ch is "{"
-        openBracket = true
+        if stackBracket is 0
+          buffer = ""
+          front = i
+        stackBracket++
       else if ch is "}"
-        if isNaN(parseInt(buffer))
-          @expression = @expression.slice(0, @expression.indexOf("{"))+
-          @data.global[buffer.trim()]+
-          @expression.slice(@expression.indexOf("}")+1)
-        else
-          @expression = @expression.slice(0, @expression.indexOf("{")) +
-          @rData[parseInt(buffer)-1]+
-          @expression.slice(@expression.indexOf("}")+1)
-        openBracket = false
-        buffer = ""
-      else if openBracket
+        stackBracket--
+        if stackBracket is 0
+          rear = i
+          buffer = buffer.trim()
+          if buffer.indexOf("}") != -1
+            buffer = @mergeExpression(buffer,rData)
+          if buffer.indexOf("<-") !=-1
+            newData = buffer.split("<-")
+            buffer = ""
+            if newData.length >2
+              buffer = undefined ##Got error so Need to defined error later
+            else
+              @data.global[newData[0].trim()] = newData[1].trim()
+              console.log @data.global
+          else
+            if not isNaN(parseInt(buffer))
+              buffer =rData[parseInt(buffer)]
+            else
+              buffer = @data.global[buffer]
+          frontside = expression.slice(0,front)+buffer
+          i = frontside.length-1
+          expression = frontside+expression.slice(rear+1)
+      else
         buffer+=ch
-    return @expression
+      i++
+    return expression
 
   ##
   # Loop in current head child if found match expression
@@ -361,8 +380,6 @@ class Irin
   # @param {string} input text
   #
   reply: (@text,callback)->
-    console.log "START REPLY"
-    console.log JSON.stringify @data.graph,null,1
     answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node
