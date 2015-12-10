@@ -42,12 +42,17 @@ class Irin
       callback = @file
     @env.runtime = @runtime()
     self = @
+    isThrowError = false
     @parse file,(err,cb)->
       if cb
         self.data.graph = {next:cb.graph}
         self.data.head =  self.data.graph
         self.data.global = cb.variable
-      callback(err)
+        if !isThrowError
+          callback()
+      if err
+        callback(err)
+        isThrowError = true
 
   ##
   # Convert from irin script to data graph
@@ -129,11 +134,12 @@ class Irin
         if state.readingHeader and text.indexOf("<-") >-1
           word = text.split("<-")
           if word.length > 2
-            ## Error more than <- in same paragraph ##
+            callback({error:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",line:state.currentLine})
+            return undefined
           else
             state.variable[word[0].trim()] = word[1].trim()
         text = text.trim()
-        ## Function parse
+        ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
           state.currentLine++
           state.headerDepth = state.currentIndent
@@ -469,15 +475,15 @@ class Irin
       else if word is "=="
         bufStack.push(bufStack.pop()==bufStack.pop())
       else if word is "!="
-        bufStack.push(!(bufStack.pop()!=bufStack.pop()))
+        bufStack.push(bufStack.pop()!=bufStack.pop())
       else if word is ">="
-        bufStack.push(!(bufStack.pop()>=bufStack.pop()))
+        bufStack.push(bufStack.pop()<=bufStack.pop())
       else if word is "<="
-        bufStack.push(!(bufStack.pop()<=bufStack.pop()))
+        bufStack.push(bufStack.pop()>=bufStack.pop())
       else if word is ">"
-        bufStack.push(!((bufStack.pop()>bufStack.pop())))
+        bufStack.push(bufStack.pop()<bufStack.pop())
       else if word is "<"
-        bufStack.push(!bufStack.pop()<bufStack.pop())
+        bufStack.push(bufStack.pop()>bufStack.pop())
       else if word is "*"
         bufStack.push(parseFloat(bufStack.pop())*parseFloat(bufStack.pop()))
       else if word is "/"
@@ -556,12 +562,20 @@ class Irin
  # @todo impletement XML request
  #
   readFile:(file,callback)->
+    #Node.js readfile
     if @env.runtime is 'node'
       @env.node.fs.readFile file, 'utf8', (err,fileData) ->
         callback(err,fileData)
-    #else if @env.runtime is 'browser'
-    #  need to impletement XML request later
-
+    #Browser readfile
+    else if @env.runtime is 'browser'
+      fileRequest = new XMLHttpRequest()
+      fileRequest.onreadystatechange = ()->
+        if fileRequest.readyState == 4 and fileRequest.status == 200
+          callback(undefined,fileRequest.responseText)
+        else if fileRequest.readyState == 4
+          callback({error:"FILE_NOT_FOUND"})
+      fileRequest.open("GET", file, true)
+      fileRequest.send()
 
  ##
  # check environment is node or browser
@@ -572,4 +586,11 @@ class Irin
       @env.node.fs = require "fs"
       return "node"
     return "browser"
-module.exports = Irin
+
+if typeof module == "object" and module and typeof module.exports == "object"
+  module.exports = Irin # support Node.js / IO.js / CommonJS
+else
+  window.Irin = Irin # support Normal browser
+  if typeof define == "function" && define.amd
+    define 'Irin', [], -> #support AMDjs
+      Irin
