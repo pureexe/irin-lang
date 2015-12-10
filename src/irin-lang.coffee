@@ -47,7 +47,7 @@ class Irin
         self.data.graph = {next:cb.graph}
         self.data.head =  self.data.graph
         self.data.global = cb.variable
-    callback()
+      callback(err)
 
   ##
   # Convert from irin script to data graph
@@ -116,18 +116,17 @@ class Irin
           if state.readingHeader
             state.readingHeader = false
           else
+            if state.currentLine != 0
+              callback({error:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",line:state.currentLine})
+              return undefined
+            if state.currentIndent != 0
+              callback({error:"HEADER_MUST_NO_INDENT",line:state.currentLine})
+              return undefined
             state.headerDepth = state.currentIndent
             state.readingHeader = true
           state.currentLine++
           continue
-        if state.readingHeader and text.trim().substring(0,2) is "->"
-          state.readingInclude = true
-          state.currentLine++
-          savedState.push(state)
-          fileAddr = text.trim().substring(2,text.length).trim()
-          self.parseWorker(fileAddr,stack+1,callbackListener)
-          return undefined
-        if state.readingHeader and text.indexOf("<-")
+        if state.readingHeader and text.indexOf("<-") >-1
           word = text.split("<-")
           if word.length > 2
             ## Error more than <- in same paragraph ##
@@ -135,7 +134,14 @@ class Irin
             state.variable[word[0].trim()] = word[1].trim()
         text = text.trim()
         ## Function parse
-        if text.substring(0,2) == "->" and not state.readingHeader
+        if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
+          state.currentLine++
+          state.headerDepth = state.currentIndent
+          savedState.push(state)
+          fileAddr = text.trim().substring(2,text.length).trim()
+          self.parseWorker(fileAddr,stack+1,callbackListener)
+          return undefined
+        else if text.substring(0,2) == "->"
           text = text.substring(2,text.length)
           text = text.trim()
           if state.currentIndent == 0

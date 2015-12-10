@@ -12,5 +12,7 @@ runBot = ()->
   rl.question ">> ", (inp)->
     console.log bot.reply(inp)
     runBot()
-bot = new irin 'brain/en-main.irin', ()->
+bot = new irin 'brain/en-main.irin', (err)->
+  if err
+    console.log "ERROR FOUND : #{err.error} | line: #{err.line}"
   runBot()

@@ -4,3 +4,5 @@ name <- IRIN
 ---------
 what is your name
   {({name}==IRIN)?my name is {name}{name<-shana}:i don't think my name is {name}}
+food
+  -> brain/en-food.irin
