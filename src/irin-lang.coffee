@@ -64,7 +64,7 @@ class Irin
   #
   parseWorker:(file,stack,callback)->
     if stack > @config.includeDepth
-      console.error("stack crash");
+      console.error("stack crash")
       callback({error:"FOREVER_LOOP"})
     else
       self = @
@@ -101,7 +101,7 @@ class Irin
       if err
         callback err
       if data
-        state = savedState.pop();
+        state = savedState.pop()
         state.currentIndent = 0
         state.currentGraph = state.graph
         while state.currentIndent != state.headerDepth
@@ -330,6 +330,8 @@ class Irin
         if stackBracket is 0
           buffer = ""
           front = i
+        else
+          buffer+="{"
         stackBracket++
       else if ch is "}"
         stackBracket--
@@ -338,14 +340,16 @@ class Irin
           buffer = buffer.trim()
           if buffer.indexOf("}") != -1
             buffer = @mergeExpression(buffer,rData)
-          if buffer.indexOf("<-") !=-1
-            newData = buffer.split("<-")
-            buffer = ""
-            if newData.length >2
-              buffer = undefined ##Got error so Need to defined error later
-            else
-              @data.global[newData[0].trim()] = newData[1].trim()
-              console.log @data.global
+          if buffer.indexOf("?") != -1 || buffer.indexOf("<-") != -1
+            if buffer.indexOf("?") !=-1
+              buffer = @inlineCondition(buffer)
+            if buffer.indexOf("<-") !=-1
+              newData = buffer.split("<-")
+              buffer = ""
+              if newData.length >2
+                buffer = undefined ##Got error so Need to defined error later
+              else
+                @data.global[newData[0].trim()] = newData[1].trim()
           else
             if not isNaN(parseInt(buffer))
               buffer =rData[parseInt(buffer)]
@@ -354,10 +358,157 @@ class Irin
           frontside = expression.slice(0,front)+buffer
           i = frontside.length-1
           expression = frontside+expression.slice(rear+1)
+        else
+          buffer+="}"
       else
         buffer+=ch
       i++
     return expression
+  ##
+  # convert inlineCondtion to conditonTree
+  # Warning: this tree is circular loop don't print it out
+  # @param {string} coditionStatment
+  #
+  inlineToConditionTree: (input)->
+    tree = {data:undefined,prev:undefined}
+    head = tree
+    buffer = ""
+    justleft = false
+    for ch in input
+      if ch == "?"
+        head.data = buffer
+        buffer = ""
+        head.left = {data:undefined,prev:head}
+        head = head.left
+      else if ch == ":"
+        head.data=buffer
+        buffer =""
+        head = head.prev
+        while head.right
+          head = head.prev
+        head.right = {data:undefined,prev:head}
+        head = head.right
+      else
+        buffer +=ch
+    head.data = buffer
+    return tree
+  ##
+  # check is charater is a operator
+  # @param {string} charater operator
+  #
+  checkOperator: (input)->
+    oprs = ["(",")","!","&&","||","==","!=",">=","<=",">","<","*","/","+","-"]
+    for opr in oprs
+      if input is opr
+        return true
+    return false
+
+  tokenizeOperator: (input)->
+    input = [input]
+    buffer = []
+    buffer2 = []
+    oprs = ["(",")","!","&&","||","==","!=",">=","<=",">","<","*","/","+","-"]
+    for opr in oprs
+      for word in input
+        if word.indexOf(opr)>-1
+          buffer2 = word.split(opr)
+          for b in buffer2
+            if b != ''
+              buffer.push(b)
+            buffer.push(opr)
+          buffer.pop()
+        else
+          buffer.push(word)
+      input = buffer
+      buffer = []
+    return input
+
+  ##
+  # convert condtionStament to Reverse Polish notation
+  # @see https://en.wikipedia.org/wiki/Reverse_Polish_notation
+  # @param {string} coditionStatment
+  #
+  convertToRPN: (input)->
+    infix = @tokenizeOperator(input)
+    output = []
+    oprStack = []
+    for ch in infix
+      if @checkOperator ch
+        if ch is ')'
+          while oprStack.length>0 and oprStack[oprStack.length-1] != '('
+            output.push(oprStack.pop())
+          oprStack.pop()
+        else
+          oprStack.push(ch)
+      else
+        output.push(ch)
+    while oprStack.length>0
+      output.push(oprStack.pop())
+    return output
+
+  ##
+  # processing condition statment is true or false
+  # @param {string} coditionStatment
+  #
+  testCondition: (input)->
+    rpn = @convertToRPN(input)
+    bufStack = []
+    for word in rpn
+      if word is "!"
+        bufStack.push(!bufStack.pop())
+      else if word is "&&"
+        bufStack.push(bufStack.pop()&&bufStack.pop())
+      else if word is "||"
+        bufStack.push(bufStack.pop()||bufStack.pop())
+      else if word is "=="
+        bufStack.push(bufStack.pop()==bufStack.pop())
+      else if word is "!="
+        bufStack.push(!(bufStack.pop()!=bufStack.pop()))
+      else if word is ">="
+        bufStack.push(!(bufStack.pop()>=bufStack.pop()))
+      else if word is "<="
+        bufStack.push(!(bufStack.pop()<=bufStack.pop()))
+      else if word is ">"
+        bufStack.push(!((bufStack.pop()>bufStack.pop())))
+      else if word is "<"
+        bufStack.push(!bufStack.pop()<bufStack.pop())
+      else if word is "*"
+        bufStack.push(parseFloat(bufStack.pop())*parseFloat(bufStack.pop()))
+      else if word is "/"
+        bufStack.push(parseFloat(bufStack.pop())/parseFloat(bufStack.pop()))
+      else if word is "-"
+        bufStack.push(parseFloat(bufStack.pop())-parseFloat(bufStack.pop()))
+      else if word is "+"
+        a = bufStack.pop()
+        b = bufStack.pop()
+        if not isNaN(parseFloat(a)) and not isNaN(parseFloat(b))
+          bufStack.push(parseFloat(a)+parseFloat(b))
+        else
+          bufStack.push(a+b)
+      else
+        bufStack.push(word)
+    return bufStack[0]
+
+  ##
+  # condition statment tree traversal
+  # @param {string} conditionTree
+  #
+  conditionWorker: (node)->
+    if node.left and node.right
+      if @testCondition(node.data)
+        return @conditionWorker(node.left)
+      else
+        return @conditionWorker(node.right)
+    else
+      return node.data
+
+  ##
+  # processing inline codition statment
+  # @param {string} inline codition statement
+  #
+  inlineCondition: (input)->
+    tree = @inlineToConditionTree(input)
+    return @conditionWorker(tree)
 
   ##
   # Loop in current head child if found match expression

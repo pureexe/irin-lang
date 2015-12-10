@@ -2,13 +2,5 @@
 -> brain/en-sub.irin
 name <- IRIN
 ---------
-q
-  {name} {name} {name} {name}: Hello Can i Help you? {name<-shana}
-Hello
-  hi
-    ->lol
-->lol
-  yep
-    world
-  fuck
-    you
+what is your name
+  {({name}==IRIN)?my name is {name}{name<-shana}:i don't think my name is {name}}
