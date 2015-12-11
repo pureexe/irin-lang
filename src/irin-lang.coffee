@@ -2,6 +2,7 @@
 # IRIN project
 # @class
 # @todo Syntax check before parse
+# @todo make mergeExpression support dynamic set values and inline condition
 # @todo file header read
 # @todo much and more
 # @public
@@ -14,160 +15,247 @@ class Irin
   config:
     indent:
       len: 2
+    includeDepth: 50
   env:
-    runtime = ""
+    runtime: 'node'
+    node:
+      fs: ''
 
   ##
   # just a simple class constructor
-  # @todo remove steam just only input and import from parse method only
+  # @todo implement browser input
   # @param {string} steam is input script
   # @param {string} option is configulation
   #
-  constructor: (@steam, @option) ->
-    #if have custom config then load custom config
-    if @option and @option.indent
-      if @option.indent.len
-        @config.indent.len = @option.indent.len
-    #parse irin language to graph
-    @data.graph = @parse(@steam)
-    @data.graph = {next:@data.graph}
-    @data.head = @data.graph
-  ##
-  # export all data graph for debuging
-  # @todo remove on release code
-  getGraph:()->
-    return @data.graph
+  constructor: (@file, @option,@callback) ->
+    if typeof @file is 'string'
+      file = @file
+      if typeof @option is 'object'
+        option = @option
+        callback = @callback
+      else
+        callback = @option
+    else if typeof @file is 'object'
+      option = @file
+      callback = @option
+    else if typeof @file is 'function'
+      callback = @file
+    @env.runtime = @runtime()
+    self = @
+    isThrowError = false
+    @parse file,(err,cb)->
+      if cb
+        self.data.graph = {next:cb.graph}
+        self.data.head =  self.data.graph
+        self.data.global = cb.variable
+        if !isThrowError
+          callback()
+      if err
+        callback(err)
+        isThrowError = true
+
   ##
   # Convert from irin script to data graph
   # @todo make parse to async
   # @todo add header read feature
   # @todo syntax check before parse
-  # @param {string} expression - the expression
-  #
-  parse: (@steam)->
-    resultGraph = []
-    currentGraph = resultGraph
-    currentIndent = 0
-    splitSteam = @steam.split "\n"
-    multiLineComment = false
-    functionObject = {}
-    functionHead = []
-    isAddtoFunction = false
-    currentAddtoFunction = ""
-    isRunningHeader = false
-    for text in splitSteam
-      #remove Single line comment
-      if text.indexOf("#") > -1
-        text = text.substring(0,text.indexOf("#"))
-      #remove Multi line Comment
-      if multiLineComment
-        if text.indexOf("\"\"\"") == -1
-          continue
-        else
-          text = text.slice(text.indexOf("\"\"\"")+3)
-          multiLineComment = false
-      if text.indexOf("\"\"\"")> -1
-        if not multiLineComment
-          commentStartPos = text.indexOf("\"\"\"")
-          text = text.slice(0, commentStartPos) + text.slice(commentStartPos+3)
-          if text.indexOf("\"\"\"")> -1
-            text = text.slice(0, commentStartPos)
-            + text.slice(text.indexOf("\"\"\"")+3)
-          else
-            text = text.substring(0,commentStartPos)
-            multiLineComment = true
-      #Header read
-      if text.indexOf("---") > -1
-        if isRunningHeader
-          isRunningHeader = false
-        else
-          isRunningHeader = true
-        continue
-      if isRunningHeader
-        text = text.trim()
-        arrayText = text.split("->")
-        @data.global[arrayText[0].trim()] = arrayText[1].trim()
-      #count textIndent
-      textIndent = text.search /\S/
-      if textIndent == -1
-        continue
-      text = text.trim()
-      textIndent = textIndent/@config.indent.len
+  # @param {string} file - filelocation
+  # @param {function} callback - filelocation
+  parse:(file,callback) ->
+    @parseWorker(file,0,callback)
 
-      #function parse
-      if text.substring(0,2) == "->"
-        text = text.substring(2,text.length)
-        text = text.trim()
-        if textIndent == 0
-        #declarefunction
-          if not functionObject[text]
-            functionObject[text] = []
-          currentAddtoFunction = text
-          isAddtoFunction = true
-          functionHead = functionObject[text]
-          continue
-        #activefunction
+  ##
+  # worker for parse function to async problem
+  #
+  parseWorker:(file,stack,callback)->
+    if stack > @config.includeDepth
+      console.error("stack crash")
+      callback({error:"FOREVER_LOOP"})
+    else
+      self = @
+      @readFile file, (err,steam)->
+        if err
+          callback err
         else
-          if currentIndent == textIndent
-            cloneObj.depth = currentIndent
-            currentGraph.push(functionObject[text].next)
-          else if textIndent>currentIndent
-            if not functionObject[text]
-              functionObject[text] = []
-            currentGraph[currentGraph.length-1].next = functionObject[text]
-            continue
-      #add to graph
-      #add to functionObject
-      if isAddtoFunction
-        if textIndent is currentIndent
-          functionHead.push {text:text,depth:textIndent,next:[]}
-          if functionHead.length > 1
-            functionHead[functionHead.length - 2].next =
-              functionHead[functionHead.length - 1].next
-        else if textIndent > currentIndent
-          currentIndent = textIndent
-          functionHead = functionHead[functionHead.length-1].next
-          functionHead.push {text:text,depth:textIndent,next:[]}
-        else
-          # if textIndent is zero so it end of function declare
-          if textIndent == 0
-            currentAddtoFunction = ""
-            isAddtoFunction = false
-            currentGraph = resultGraph
-            currentIndent = 0
-            while textIndent != currentIndent
-              currentIndent++
-              currentGraph = currentGraph[currentGraph.length-1].next
-            currentGraph.push {text:text,depth:textIndent,next:[]}
+          self.parseProcess steam.toString(),stack,callback
+  ##
+  # main function for parse
+  #
+  parseProcess:(steam,stack,callback)->
+    steam = @removeComment steam
+    lines = steam.split("\n")
+    state =
+      currentLine: 0
+      currentIndent: 0
+      pastIndent: 0
+      readingHeader: false
+      readingInclude: false
+      functionObject:{}
+      functionHead:{}
+      currentFuncName:""
+      graph:[]
+      variable:{}
+      includeVariable:[]
+      headerDepth: 0
+      isAddtoFunction: false
+    state.currentGraph = state.graph
+    indentLen = @config.indent.len
+    self = @
+    savedState = []
+    callbackListener = (err,data)->
+      if err
+        callback err
+      if data
+        state = savedState.pop()
+        state.currentIndent = 0
+        state.currentGraph = state.graph
+        while state.currentIndent != state.headerDepth
+          state.currentIndent++
+          state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+        state.currentGraph.push.apply(state.currentGraph,data.graph)
+        state.pastIndent = state.headerDepth
+      while state.currentLine < lines.length
+        text = lines[state.currentLine]
+        state.currentIndent = self.countIndent(text)
+        if text.trim().indexOf("---") > -1
+          if state.readingHeader
+            state.readingHeader = false
           else
-            functionHead = resultGraph
-            currentIndent = 0
-            while textIndent != currentIndent
-              currentIndent++
-              functionHead = functionHead[functionHead.length-1].next
-            functionHead.push {text:text,depth:textIndent,next:[]}
-      #add to resultGraph
-      else
-        if textIndent is currentIndent
-          currentGraph.push {text:text,depth:textIndent,next:[]}
-          #pointer link to same child for multiqustion on same answer
-          if currentGraph.length > 1
-            currentGraph[currentGraph.length - 2].next =
-              currentGraph[currentGraph.length - 1].next
-        #travle deeper
-        else if textIndent > currentIndent
-          currentIndent = textIndent
-          currentGraph = currentGraph[currentGraph.length-1].next
-          currentGraph.push {text:text,depth:textIndent,next:[]}
-        #end of route so restart new at root
+            if state.currentLine != 0
+              callback({error:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",line:state.currentLine})
+              return undefined
+            if state.currentIndent != 0
+              callback({error:"HEADER_MUST_NO_INDENT",line:state.currentLine})
+              return undefined
+            state.headerDepth = state.currentIndent
+            state.readingHeader = true
+          state.currentLine++
+          continue
+        if state.readingHeader and text.indexOf("<-") >-1
+          word = text.split("<-")
+          if word.length > 2
+            callback({error:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",line:state.currentLine})
+            return undefined
+          else
+            state.variable[word[0].trim()] = word[1].trim()
+        text = text.trim()
+        ## Reading Thread operator (->)
+        if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
+          state.currentLine++
+          state.headerDepth = state.currentIndent
+          savedState.push(state)
+          fileAddr = text.trim().substring(2,text.length).trim()
+          self.parseWorker(fileAddr,stack+1,callbackListener)
+          return undefined
+        else if text.substring(0,2) == "->"
+          text = text.substring(2,text.length)
+          text = text.trim()
+          if state.currentIndent == 0
+          #declarefunction
+            if not state.functionObject[text]
+              state.functionObject[text] = []
+            state.currentFuncName = text
+            state.isAddtoFunction = true
+            state.functionHead = state.functionObject[text]
+            state.currentLine++
+            continue
+          else
+            if not state.functionObject[text]
+              state.functionObject[text] = []
+            if state.pastIndent == state.currentIndent
+              state.currentGraph.push(state.functionObject[text])
+            else if state.currentIndent>state.pastIndent
+              state.currentGraph[state.currentGraph.length-1].next = state.functionObject[text]
+            state.currentLine++
+            continue
+        if state.isAddtoFunction and state.currentIndent == 0
+          state.isAddtoFunction = false
+        if state.isAddtoFunction
+          if state.currentIndent is state.pastIndent
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+            if state.functionHead.length > 1 and state.functionHead[state.functionHead.length - 2].next.length == 0
+              state.functionHead[state.functionHead.length - 2].next =
+                state.functionHead[state.functionHead.length - 1].next
+          else if state.currentIndent > state.pastIndent
+            ## define when tab is greater
+            state.pastIndent = state.currentIndent
+            while state.functionHead[state.functionHead.length-1].next.length
+              state.functionHead = state.functionHead[state.functionHead.length-1].next
+              state.currentIndent++
+            state.functionHead = state.functionHead[state.functionHead.length-1].next
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+          else if state.currentIndent < state.pastIndent
+            ## define when tab is lesster
+            state.functionHead = state.functionObject[state.currentFuncName]
+            state.pastIndent = state.currentIndent
+            while state.currentIndent != state.pastIndent
+              state.currentIndent++
+              state.functionHead = state.functionHead[state.currentGraph.length-1].next
+            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
+          state.currentLine++
+          continue
+        ## Begin normal parse algorithm
+        if state.currentIndent is state.pastIndent
+          ## define when tab is equal
+          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
+          if state.currentGraph.length > 1 and state.currentGraph[state.currentGraph.length - 2].next.length == 0
+            state.currentGraph[state.currentGraph.length - 2].next =
+              state.currentGraph[state.currentGraph.length - 1].next
+        else if state.currentIndent > state.pastIndent
+          ## define when tab is greater
+          state.pastIndent = state.currentIndent
+          while state.currentGraph[state.currentGraph.length-1].next.length
+            state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+            state.currentIndent++
+          state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
+        else if state.currentIndent < state.pastIndent
+          ## define when tab is lesster
+          state.currentGraph = state.graph
+          state.pastIndent = state.currentIndent
+          while state.currentIndent != state.pastIndent
+            state.currentIndent++
+            state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
+        state.currentLine++
+      callback(undefined,{graph:state.graph,variable:state.variable});
+
+      # you should parse in this callback and terminate if found include
+      # and then cotinue from state when got callback later
+    callbackListener()
+  ##
+  # count text indent
+  #
+  countIndent:(text)->
+    indent = (text.search /\S/)
+    if indent is -1
+      indent = 0
+    else
+      indent = indent/@config.indent.len
+    return indent
+  ##
+  # remove comment from sourcecode
+  #
+  removeComment: (steam)->
+    splitSteam = steam.split "\n"
+    output = []
+    multiComment = false
+    for line in  splitSteam
+      if line.indexOf("###") > -1
+        if multiComment
+          multiComment = false
+          line = line.substring(line.indexOf("###")+3,line.length)
         else
-          currentGraph = resultGraph
-          currentIndent = 0
-          while textIndent != currentIndent
-            currentIndent++
-            currentGraph = currentGraph[currentGraph.length-1].next
-          currentGraph.push {text:text,depth:textIndent,next:[]}
-    return resultGraph
+          multiComment = true
+          line = line.substring(0,line.indexOf("###"))
+      else if line.indexOf("#") > -1
+        line = line.substring(0,line.indexOf("#"))
+      if line.trim().length is 0
+        continue
+      if multiComment
+        continue
+      output.push line
+    return output.join "\n"
 
   ##
   # Convert from irin expression to regular expression
@@ -227,40 +315,212 @@ class Irin
   #
   match:(input,expression)->
     cExp = new RegExp(@toRegular(expression))
+
     result = input.match(cExp)
     if result
       result.shift()
       return result
     else
       return undefined
-
   ##
   # Merge reply expression with reply data
   # @todo change it to better version Merge
   # @param {string} expression - the expression
   # @param {string} rData - the list of reply array
   #
-  mergeExpression: (@expression,@rData)->
+  mergeExpression: (expression,rData)->
     #Todo : merge array to answer before output
+    #Todo : make this function support dynamic set values and inline condition
     buffer = ""
-    openBracket = false
-    for ch in @expression
+    stackBracket = 0
+    front = 0
+    rear = 0
+    i = 0
+    while i < expression.length
+      ch = expression[i]
       if ch is "{"
-        openBracket = true
-      else if ch is "}"
-        if isNaN(parseInt(buffer))
-          @expression = @expression.slice(0, @expression.indexOf("{"))+
-           @data.global[buffer]+
-           @expression.slice(@expression.indexOf("}")+1)
+        if stackBracket is 0
+          buffer = ""
+          front = i
         else
-          @expression = @expression.slice(0, @expression.indexOf("{")) +
-           @rData[parseInt(buffer)-1]+
-           @expression.slice(@expression.indexOf("}")+1)
-        openBracket = false
-        buffer = ""
-      else if openBracket
+          buffer+="{"
+        stackBracket++
+      else if ch is "}"
+        stackBracket--
+        if stackBracket is 0
+          rear = i
+          buffer = buffer.trim()
+          if buffer.indexOf("}") != -1
+            buffer = @mergeExpression(buffer,rData)
+          if buffer.indexOf("?") != -1 || buffer.indexOf("<-") != -1
+            if buffer.indexOf("?") !=-1
+              buffer = @inlineCondition(buffer)
+            if buffer.indexOf("<-") !=-1
+              newData = buffer.split("<-")
+              buffer = ""
+              if newData.length >2
+                buffer = undefined ##Got error so Need to defined error later
+              else
+                @data.global[newData[0].trim()] = newData[1].trim()
+          else
+            if not isNaN(parseInt(buffer))
+              buffer =rData[parseInt(buffer)]
+            else
+              buffer = @data.global[buffer]
+          frontside = expression.slice(0,front)+buffer
+          i = frontside.length-1
+          expression = frontside+expression.slice(rear+1)
+        else
+          buffer+="}"
+      else
         buffer+=ch
-    return @expression
+      i++
+    return expression
+  ##
+  # convert inlineCondtion to conditonTree
+  # Warning: this tree is circular loop don't print it out
+  # @param {string} coditionStatment
+  #
+  inlineToConditionTree: (input)->
+    tree = {data:undefined,prev:undefined}
+    head = tree
+    buffer = ""
+    justleft = false
+    for ch in input
+      if ch == "?"
+        head.data = buffer
+        buffer = ""
+        head.left = {data:undefined,prev:head}
+        head = head.left
+      else if ch == ":"
+        head.data=buffer
+        buffer =""
+        head = head.prev
+        while head.right
+          head = head.prev
+        head.right = {data:undefined,prev:head}
+        head = head.right
+      else
+        buffer +=ch
+    head.data = buffer
+    return tree
+  ##
+  # check is charater is a operator
+  # @param {string} charater operator
+  #
+  checkOperator: (input)->
+    oprs = ["(",")","!","&&","||","==","!=",">=","<=",">","<","*","/","+","-"]
+    for opr in oprs
+      if input is opr
+        return true
+    return false
+
+  tokenizeOperator: (input)->
+    input = [input]
+    buffer = []
+    buffer2 = []
+    oprs = ["(",")","!","&&","||","==","!=",">=","<=",">","<","*","/","+","-"]
+    for opr in oprs
+      for word in input
+        if word.indexOf(opr)>-1
+          buffer2 = word.split(opr)
+          for b in buffer2
+            if b != ''
+              buffer.push(b)
+            buffer.push(opr)
+          buffer.pop()
+        else
+          buffer.push(word)
+      input = buffer
+      buffer = []
+    return input
+
+  ##
+  # convert condtionStament to Reverse Polish notation
+  # @see https://en.wikipedia.org/wiki/Reverse_Polish_notation
+  # @param {string} coditionStatment
+  #
+  convertToRPN: (input)->
+    infix = @tokenizeOperator(input)
+    output = []
+    oprStack = []
+    for ch in infix
+      if @checkOperator ch
+        if ch is ')'
+          while oprStack.length>0 and oprStack[oprStack.length-1] != '('
+            output.push(oprStack.pop())
+          oprStack.pop()
+        else
+          oprStack.push(ch)
+      else
+        output.push(ch)
+    while oprStack.length>0
+      output.push(oprStack.pop())
+    return output
+
+  ##
+  # processing condition statment is true or false
+  # @param {string} coditionStatment
+  #
+  testCondition: (input)->
+    rpn = @convertToRPN(input)
+    bufStack = []
+    for word in rpn
+      if word is "!"
+        bufStack.push(!bufStack.pop())
+      else if word is "&&"
+        bufStack.push(bufStack.pop()&&bufStack.pop())
+      else if word is "||"
+        bufStack.push(bufStack.pop()||bufStack.pop())
+      else if word is "=="
+        bufStack.push(bufStack.pop()==bufStack.pop())
+      else if word is "!="
+        bufStack.push(bufStack.pop()!=bufStack.pop())
+      else if word is ">="
+        bufStack.push(bufStack.pop()<=bufStack.pop())
+      else if word is "<="
+        bufStack.push(bufStack.pop()>=bufStack.pop())
+      else if word is ">"
+        bufStack.push(bufStack.pop()<bufStack.pop())
+      else if word is "<"
+        bufStack.push(bufStack.pop()>bufStack.pop())
+      else if word is "*"
+        bufStack.push(parseFloat(bufStack.pop())*parseFloat(bufStack.pop()))
+      else if word is "/"
+        bufStack.push(parseFloat(bufStack.pop())/parseFloat(bufStack.pop()))
+      else if word is "-"
+        bufStack.push(parseFloat(bufStack.pop())-parseFloat(bufStack.pop()))
+      else if word is "+"
+        a = bufStack.pop()
+        b = bufStack.pop()
+        if not isNaN(parseFloat(a)) and not isNaN(parseFloat(b))
+          bufStack.push(parseFloat(a)+parseFloat(b))
+        else
+          bufStack.push(a+b)
+      else
+        bufStack.push(word)
+    return bufStack[0]
+
+  ##
+  # condition statment tree traversal
+  # @param {string} conditionTree
+  #
+  conditionWorker: (node)->
+    if node.left and node.right
+      if @testCondition(node.data)
+        return @conditionWorker(node.left)
+      else
+        return @conditionWorker(node.right)
+    else
+      return node.data
+
+  ##
+  # processing inline codition statment
+  # @param {string} inline codition statement
+  #
+  inlineCondition: (input)->
+    tree = @inlineToConditionTree(input)
+    return @conditionWorker(tree)
 
   ##
   # Loop in current head child if found match expression
@@ -272,7 +532,7 @@ class Irin
   selectChild: (@text, @head)->
     for child in @head.next
       #this condition need to change to regular expression "later"
-      if answerData = @match(@text,child.text)
+      if answerData = @match(@text.toUpperCase(),child.text.toUpperCase())
         select = Math.floor(Math.random()*child.next.length)
         return {node:child.next[select],data:answerData}
     return undefined
@@ -282,16 +542,55 @@ class Irin
   # @todo make reply to async
   # @param {string} input text
   #
-  reply: (@text)->
+  reply: (@text,callback)->
     answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node
       return @mergeExpression(answer.node.text,answer.data)
-    @data.head = @data.graph
-    answer = @selectChild(@text,@data.head)
-    if answer
-      @data.head = answer.node
-      return @mergeExpression(answer.node.text,answer.data)
-    return "[Log:Error] answer not found"
+    else
+      @data.head = @data.graph
+      answer = @selectChild(@text,@data.head)
+      if answer
+        @data.head = answer.node
+        return @mergeExpression(answer.node.text,answer.data)
+      else
+        return "[Log:Error] answer not found"
+ ##
+ # use to readfile with node and browser
+ # @param file path location
+ # @param callback(error,susccess)
+ # @todo impletement XML request
+ #
+  readFile:(file,callback)->
+    #Node.js readfile
+    if @env.runtime is 'node'
+      @env.node.fs.readFile file, 'utf8', (err,fileData) ->
+        callback(err,fileData)
+    #Browser readfile
+    else if @env.runtime is 'browser'
+      fileRequest = new XMLHttpRequest()
+      fileRequest.onreadystatechange = ()->
+        if fileRequest.readyState == 4 and fileRequest.status == 200
+          callback(undefined,fileRequest.responseText)
+        else if fileRequest.readyState == 4
+          callback({error:"FILE_NOT_FOUND"})
+      fileRequest.open("GET", file, true)
+      fileRequest.send()
 
-module.exports = Irin
+ ##
+ # check environment is node or browser
+ #
+  runtime: ()->
+    # In Node, there is no window, and module is a thing.
+    if typeof(window) is "undefined" and typeof(module) is "object"
+      @env.node.fs = require "fs"
+      return "node"
+    return "browser"
+
+if typeof module == "object" and module and typeof module.exports == "object"
+  module.exports = Irin # support Node.js / IO.js / CommonJS
+else
+  window.Irin = Irin # support Normal browser
+  if typeof define == "function" && define.amd
+    define 'Irin', [], -> #support AMDjs
+      Irin
