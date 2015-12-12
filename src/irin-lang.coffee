@@ -1,10 +1,7 @@
 ##
 # IRIN project
-# @class
-# @todo Syntax check before parse
-# @todo make mergeExpression support dynamic set values and inline condition
-# @todo file header read
-# @todo much and more
+# @class Irin
+# @todo refactor
 # @public
 #
 class Irin
@@ -361,7 +358,8 @@ class Irin
               if newData.length >2
                 buffer = undefined ##Got error so Need to defined error later
               else
-                @data.global[newData[0].trim()] = newData[1].trim()
+                @data.global[newData[0].trim()] =
+                  @compileOperator(newData[1].trim())
           else
             if not isNaN(parseInt(buffer))
               buffer =rData[parseInt(buffer)]
@@ -462,7 +460,7 @@ class Irin
   # processing condition statment is true or false
   # @param {string} coditionStatment
   #
-  testCondition: (input)->
+  compileOperator: (input)->
     rpn = @convertToRPN(input)
     bufStack = []
     for word in rpn
@@ -507,7 +505,7 @@ class Irin
   #
   conditionWorker: (node)->
     if node.left and node.right
-      if @testCondition(node.data)
+      if @compileOperator(node.data)
         return @conditionWorker(node.left)
       else
         return @conditionWorker(node.right)
