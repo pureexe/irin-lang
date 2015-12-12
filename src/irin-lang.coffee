@@ -187,7 +187,7 @@ class Irin
             state.pastIndent = state.currentIndent
             while state.currentIndent != state.pastIndent
               state.currentIndent++
-              state.functionHead = state.functionHead[state.currentGraph.length-1].next
+              state.functionHead = state.functionHead[state.functionHead.length-1].next
             state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
           state.currentLine++
           continue
