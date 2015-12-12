@@ -53,8 +53,6 @@ class Irin
 
   ##
   # Convert from irin script to data graph
-  # @todo make parse to async
-  # @todo add header read feature
   # @todo syntax check before parse
   # @param {string} file - filelocation
   # @param {function} callback - filelocation
@@ -153,7 +151,7 @@ class Irin
               state.functionObject[text] = []
             state.currentFuncName = text
             state.isAddtoFunction = true
-            state.functionHead = state.functionObject[text]
+            state.currentGraph = state.functionObject[text]
             state.currentLine++
             continue
           else
@@ -167,30 +165,6 @@ class Irin
             continue
         if state.isAddtoFunction and state.currentIndent == 0
           state.isAddtoFunction = false
-        if state.isAddtoFunction
-          if state.currentIndent is state.pastIndent
-            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
-            if state.functionHead.length > 1 and state.functionHead[state.functionHead.length - 2].next.length == 0
-              state.functionHead[state.functionHead.length - 2].next =
-                state.functionHead[state.functionHead.length - 1].next
-          else if state.currentIndent > state.pastIndent
-            ## define when tab is greater
-            state.pastIndent = state.currentIndent
-            while state.functionHead[state.functionHead.length-1].next.length
-              state.functionHead = state.functionHead[state.functionHead.length-1].next
-              state.currentIndent++
-            state.functionHead = state.functionHead[state.functionHead.length-1].next
-            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
-          else if state.currentIndent < state.pastIndent
-            ## define when tab is lesster
-            state.functionHead = state.functionObject[state.currentFuncName]
-            state.pastIndent = state.currentIndent
-            while state.currentIndent != state.pastIndent
-              state.currentIndent++
-              state.functionHead = state.functionHead[state.functionHead.length-1].next
-            state.functionHead.push {text:text,depth:state.currentIndent,next:[]}
-          state.currentLine++
-          continue
         ## Begin normal parse algorithm
         if state.currentIndent is state.pastIndent
           ## define when tab is equal
@@ -208,7 +182,10 @@ class Irin
           state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
         else if state.currentIndent < state.pastIndent
           ## define when tab is lesster
-          state.currentGraph = state.graph
+          if state.isAddtoFunction
+            state.currentGraph = state.functionObject[state.currentFuncName]
+          else
+            state.currentGraph = state.graph
           state.pastIndent = state.currentIndent
           while state.currentIndent != state.pastIndent
             state.currentIndent++
@@ -256,7 +233,6 @@ class Irin
 
   ##
   # Convert from irin expression to regular expression
-  # @todo merge global data before change Irin Expression to Regular Expression
   # @param {string} expression - the expression
   #
   toRegular:(expression)->
@@ -306,7 +282,6 @@ class Irin
 
   ##
   # Try to Match expression
-  # @todo need to make Captialize and non Captialize match
   # @param {string} expression - the expression
   # @param {string} input - input to test expression
   #
@@ -321,7 +296,6 @@ class Irin
       return undefined
   ##
   # Merge reply expression with reply data
-  # @todo change it to better version Merge
   # @param {string} expression - the expression
   # @param {string} rData - the list of reply array
   #
@@ -537,7 +511,7 @@ class Irin
 
   ##
   # findReply from data graph
-  # @todo make reply to async
+  # @todo make reply to async | i think it ok to use sync mode?
   # @param {string} input text
   #
   reply: (@text,callback)->
@@ -557,7 +531,6 @@ class Irin
  # use to readfile with node and browser
  # @param file path location
  # @param callback(error,susccess)
- # @todo impletement XML request
  #
   readFile:(file,callback)->
     #Node.js readfile
