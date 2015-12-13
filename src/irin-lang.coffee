@@ -84,13 +84,10 @@ class Irin
       currentIndent: 0
       pastIndent: 0
       readingHeader: false
-      readingInclude: false
       functionObject:{}
-      functionHead:{}
       currentFuncName:""
       graph:[]
       variable:{}
-      includeVariable:[]
       headerDepth: 0
       isAddtoFunction: false
     state.currentGraph = state.graph
