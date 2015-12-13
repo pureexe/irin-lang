@@ -105,6 +105,11 @@ class Irin
           state.indent++
           state.head = state.head[state.head.length-1].next
         state.head.push.apply(state.head,data.graph)
+        for key of data.functionObject
+          if state.functionObject[key]
+            state.functionObject[key].push.apply(state.functionObject[key],data.functionObject[key])
+          else
+            state.functionObject[key] = data.functionObject[key]
         state.pastIndent = state.headerDepth
       while state.line < lines.length
         text = lines[state.line]
@@ -188,7 +193,7 @@ class Irin
             state.head = state.head[state.head.length-1].next
           state.head.push {text:text,next:[]}
         state.line++
-      callback(undefined,{graph:state.graph,variable:state.variable})
+      callback(undefined,{graph:state.graph,variable:state.variable,functionObject:state.functionObject})
 
       # you should parse in this callback and terminate if found include
       # and then cotinue from state when got callback later
