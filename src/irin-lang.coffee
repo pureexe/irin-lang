@@ -80,8 +80,8 @@ class Irin
     steam = @removeComment steam
     lines = steam.split("\n")
     state =
-      currentLine: 0
-      currentIndent: 0
+      line: 0
+      indent: 0
       pastIndent: 0
       readingHeader: false
       functionObject:{}
@@ -90,7 +90,7 @@ class Irin
       variable:{}
       headerDepth: 0
       isAddtoFunction: false
-    state.currentGraph = state.graph
+    state.head = state.graph
     indentLen = @config.indent.len
     self = @
     savedState = []
@@ -99,42 +99,42 @@ class Irin
         callback err
       if data
         state = savedState.pop()
-        state.currentIndent = 0
-        state.currentGraph = state.graph
-        while state.currentIndent != state.headerDepth
-          state.currentIndent++
-          state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-        state.currentGraph.push.apply(state.currentGraph,data.graph)
+        state.indent = 0
+        state.head = state.graph
+        while state.indent != state.headerDepth
+          state.indent++
+          state.head = state.head[state.head.length-1].next
+        state.head.push.apply(state.head,data.graph)
         state.pastIndent = state.headerDepth
-      while state.currentLine < lines.length
-        text = lines[state.currentLine]
-        state.currentIndent = self.countIndent(text)
+      while state.line < lines.length
+        text = lines[state.line]
+        state.indent = self.countIndent(text)
         if text.trim().indexOf("---") > -1
           if state.readingHeader
             state.readingHeader = false
           else
-            if state.currentLine != 0
-              callback({error:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",line:state.currentLine})
+            if state.line != 0
+              callback({error:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",line:state.line})
               return undefined
-            if state.currentIndent != 0
-              callback({error:"HEADER_MUST_NO_INDENT",line:state.currentLine})
+            if state.indent != 0
+              callback({error:"HEADER_MUST_NO_INDENT",line:state.line})
               return undefined
-            state.headerDepth = state.currentIndent
+            state.headerDepth = state.indent
             state.readingHeader = true
-          state.currentLine++
+          state.line++
           continue
         if state.readingHeader and text.indexOf("<-") >-1
           word = text.split("<-")
           if word.length > 2
-            callback({error:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",line:state.currentLine})
+            callback({error:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",line:state.line})
             return undefined
           else
             state.variable[word[0].trim()] = word[1].trim()
         text = text.trim()
         ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
-          state.currentLine++
-          state.headerDepth = state.currentIndent
+          state.line++
+          state.headerDepth = state.indent
           savedState.push(state)
           fileAddr = text.trim().substring(2,text.length).trim()
           self.parseWorker(fileAddr,stack+1,callbackListener)
@@ -142,55 +142,53 @@ class Irin
         else if text.substring(0,2) == "->"
           text = text.substring(2,text.length)
           text = text.trim()
-          if state.currentIndent == 0
-          #declarefunction
+          if state.indent == 0 #define new topic
             if not state.functionObject[text]
               state.functionObject[text] = []
             state.currentFuncName = text
             state.isAddtoFunction = true
-            state.currentGraph = state.functionObject[text]
-            state.currentLine++
-            state.pastIndent = self.countIndent(lines[state.currentLine])
+            state.head = state.functionObject[text]
+            state.line++
+            state.pastIndent = self.countIndent(lines[state.line])
             continue
-          else
-            if not state.functionObject[text]
+          else #join topic
+            if not state.functionObject[text] # never hear this topic before
               state.functionObject[text] = []
-            if state.pastIndent == state.currentIndent
-              state.currentGraph.push(state.functionObject[text])
-            else if state.currentIndent>state.pastIndent
-              state.currentGraph[state.currentGraph.length-1].next = state.functionObject[text]
-            state.currentLine++
+            if state.pastIndent == state.indent
+              state.head.push(state.functionObject[text])
+            else if state.indent>state.pastIndent
+              state.head[state.head.length-1].next = state.functionObject[text]
+            state.line++
             continue
-        if state.isAddtoFunction and state.currentIndent == 0
+        if state.isAddtoFunction and state.indent == 0
           state.isAddtoFunction = false
         ## Begin normal parse algorithm
-        if state.currentIndent is state.pastIndent
+        if state.indent is state.pastIndent
           ## define when tab is equal
-          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
-          if state.currentGraph.length > 1 and state.currentGraph[state.currentGraph.length - 2].next.length == 0
-            state.currentGraph[state.currentGraph.length - 2].next =
-              state.currentGraph[state.currentGraph.length - 1].next
-        else if state.currentIndent > state.pastIndent
+          state.head.push {text:text,next:[]}
+          if state.head.length > 1 and state.head[state.head.length - 2].next.length == 0
+            state.head[state.head.length - 2].next = state.head[state.head.length - 1].next
+        else if state.indent > state.pastIndent
           ## define when tab is greater
-          state.pastIndent = state.currentIndent
-          while state.currentGraph[state.currentGraph.length-1].next.length
-            state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-            state.currentIndent++
-          state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
-        else if state.currentIndent < state.pastIndent
+          state.pastIndent = state.indent
+          while state.head[state.head.length-1].next.length
+            state.head = state.head[state.head.length-1].next
+            state.indent++
+          state.head = state.head[state.head.length-1].next
+          state.head.push {text:text,next:[]}
+        else if state.indent < state.pastIndent
           ## define when tab is lesster
           if state.isAddtoFunction
-            state.currentGraph = state.functionObject[state.currentFuncName]
+            state.head = state.functionObject[state.currentFuncName]
           else
-            state.currentGraph = state.graph
-          state.pastIndent = state.currentIndent
-          while state.currentIndent != state.pastIndent
-            state.currentIndent++
-            state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
-        state.currentLine++
-      callback(undefined,{graph:state.graph,variable:state.variable});
+            state.head = state.graph
+          state.pastIndent = state.indent
+          while state.indent != state.pastIndent
+            state.indent++
+            state.head = state.head[state.head.length-1].next
+          state.head.push {text:text,next:[]}
+        state.line++
+      callback(undefined,{graph:state.graph,variable:state.variable})
 
       # you should parse in this callback and terminate if found include
       # and then cotinue from state when got callback later
