@@ -150,6 +150,7 @@ class Irin
             state.isAddtoFunction = true
             state.currentGraph = state.functionObject[text]
             state.currentLine++
+            state.pastIndent = self.countIndent(lines[state.currentLine])
             continue
           else
             if not state.functionObject[text]
@@ -172,15 +173,11 @@ class Irin
         else if state.currentIndent > state.pastIndent
           ## define when tab is greater
           state.pastIndent = state.currentIndent
-          if not state.currentGraph instanceof Array
-            while state.currentGraph[state.currentGraph.length-1].next.length
-              state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-              state.currentIndent++
+          while state.currentGraph[state.currentGraph.length-1].next.length
             state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
-            state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
-          else
-            state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
-            state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+            state.currentIndent++
+          state.currentGraph = state.currentGraph[state.currentGraph.length-1].next
+          state.currentGraph.push {text:text,depth:state.currentIndent,next:[]}
         else if state.currentIndent < state.pastIndent
           ## define when tab is lesster
           if state.isAddtoFunction
