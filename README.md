@@ -38,7 +38,7 @@ var Irin = require("irin-lang")
 
 by using normal browser
 ``` html
-<script src="path/to/irin-lang.js"></script>
+<script src="path/to/irin-lang.min.js"></script>
 ```
 
 then you must check for make sure everything work correctly. by create file `hello.irin`
@@ -47,7 +47,7 @@ hello
   Hello world!
 ```  
 and write this javascript to run `hello.irin` with input `hello`
-```  
+```  javascript
 var bot = new Irin("hello.irin",function(err){
   if(err){
     throw err;
