@@ -9,6 +9,7 @@ class Irin
     graph: []
     head: []
     global: {}
+    files: []
   config:
     indent:
       len: 2
@@ -40,6 +41,7 @@ class Irin
     @env.runtime = @runtime()
     self = @
     isThrowError = false
+    @data.files.push(file)
     @parse file,(err,cb)->
       if cb
         self.data.graph = {next:cb.graph}
@@ -98,6 +100,7 @@ class Irin
       if err
         callback err
       if data
+        self.data.files.pop()
         state = savedState.pop()
         state.indent = 0
         state.head = state.graph
@@ -105,6 +108,9 @@ class Irin
           state.indent++
           state.head = state.head[state.head.length-1].next
         state.head.push.apply(state.head,data.graph)
+        for key of data.variable
+          if not state.variable[key]
+            state.variable[key] = data.variable[key]
         for key of data.functionObject
           if state.functionObject[key]
             state.functionObject[key].push.apply(state.functionObject[key],data.functionObject[key])
@@ -119,10 +125,10 @@ class Irin
             state.readingHeader = false
           else
             if state.line != 0
-              callback({error:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",line:state.line})
+              callback({message:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",file:self.data.files.pop(),line:state.line})
               return undefined
             if state.indent != 0
-              callback({error:"HEADER_MUST_NO_INDENT",line:state.line})
+              callback({message:"HEADER_MUST_NO_INDENT",file:self.data.files.pop(),line:state.line})
               return undefined
             state.headerDepth = state.indent
             state.readingHeader = true
@@ -131,7 +137,7 @@ class Irin
         if state.readingHeader and text.indexOf("<-") >-1
           word = text.split("<-")
           if word.length > 2
-            callback({error:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",line:state.line})
+            callback({message:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",file:self.data.files.pop(),line:state.line})
             return undefined
           else
             state.variable[word[0].trim()] = word[1].trim()
@@ -142,11 +148,14 @@ class Irin
           state.headerDepth = state.indent
           savedState.push(state)
           fileAddr = text.trim().substring(2,text.length).trim()
+          self.data.files.push(fileAddr)
           self.parseWorker(fileAddr,stack+1,callbackListener)
           return undefined
         else if text.substring(0,2) == "->"
           text = text.substring(2,text.length)
           text = text.trim()
+          if text == ""
+            callback({message:"CANT_DECLARE_TOPIC_WITH_EMPTY_NAME",file:self.data.files.pop(),line:state.line})
           if state.indent == 0 #define new topic
             if not state.functionObject[text]
               state.functionObject[text] = []
