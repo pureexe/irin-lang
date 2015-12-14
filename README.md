@@ -65,6 +65,13 @@ documentation is available in Thai and English.
 - ภาษาไทย [ภาษา.ไอริน.ไทย](https://ภาษา.ไอริน.ไทย)
 - English [lang.irin.in.th](https://lang.irin.in.th) and [Repo Wiki](https://github.com/pureexe/irin-lang/wiki)
 
+## LICENSE
+
+this project has been supported
+by the National Electronics and Computer Technology Center (NECTEC)
+
+Please read custom license from LICENSE in this repository.
+
 ## Develop by
 Pakkapon Phongthawee  
 Email : phongthawee_p@silpakorn.edu  
