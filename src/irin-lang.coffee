@@ -138,11 +138,11 @@ class Irin
           continue
         if state.readingHeader and text.indexOf("<-") >-1
           word = text.split("<-")
-          if word.length > 2
-            callback({message:"CANT_USE_MORE_ONE_DECLARE_VARIABLE_IN_SAME_LINE",file:self.data.files.pop(),line:state.line})
-            return undefined
-          else
-            state.variable[word[0].trim()] = word[1].trim()
+          last = word.length-1
+          i = 0
+          while i < last
+            state.variable[word[i].trim()] = word[last].trim()
+            i++
         text = text.trim()
         if not checkParentesis(text)
           callback({message:"BRACKET_MISMATCH",file:self.data.files.pop(),line:state.line})
@@ -343,11 +343,12 @@ class Irin
             if buffer.indexOf("<-") !=-1
               newData = buffer.split("<-")
               buffer = ""
-              if newData.length >2
-                buffer = undefined ##Got error so Need to defined error later
-              else
-                @data.global[newData[0].trim()] =
-                  @compileOperator(newData[1].trim())
+              last = newData.length-1
+              assignData = @compileOperator(newData[last].trim())
+              i = 0
+              while i < last
+                @data.global[newData[i].trim()] = assignData
+                i++
           else
             if not isNaN(parseInt(buffer))
               buffer =rData[parseInt(buffer)]
