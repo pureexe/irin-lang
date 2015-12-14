@@ -11,7 +11,7 @@ irin language has divided into two part that call Head and Body. In head use to 
 
 ```
 Hello
-  Hi
+  Hi!
 ```
 when you type `hello`. Don't worry about case sensitive on question. bot will reply `Hi!`. Line without indent always question. And greater deep level is answer. And next greater level is question.
 
