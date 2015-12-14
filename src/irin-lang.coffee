@@ -83,7 +83,9 @@ class Irin
     savedState = []
     callbackListener = (err,data)->
       if err
-        callback err
+        state = savedState.pop()
+        self.data.files.pop()
+        callback {message:err.message,file:self.data.files.pop(),line:state.line}
       if data
         self.data.files.pop()
         state = savedState.pop()
@@ -112,10 +114,10 @@ class Irin
             state.readingHeader = false
           else
             if state.line != 0
-              callback({message:"HEADER_MUST_DECLARE_ON_TOP_OF_FILES_ONLY",file:self.data.files.pop(),line:state.line})
+              callback({message:"Header must declare on top of file only.",file:self.data.files.pop(),line:state.line})
               return undefined
             if state.indent != 0
-              callback({message:"HEADER_MUST_NO_INDENT",file:self.data.files.pop(),line:state.line})
+              callback({message:"Header must have no indent.",file:self.data.files.pop(),line:state.line})
               return undefined
             state.headerDepth = state.indent
             state.readingHeader = true
@@ -130,7 +132,7 @@ class Irin
             i++
         text = text.trim()
         if not checkParentesis(text)
-          callback({message:"BRACKET_MISMATCH",file:self.data.files.pop(),line:state.line})
+          callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line})
         ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
           state.line++
@@ -144,7 +146,7 @@ class Irin
           text = text.substring(2,text.length)
           text = text.trim()
           if text == ""
-            callback({message:"CANT_DECLARE_TOPIC_WITH_EMPTY_NAME",file:self.data.files.pop(),line:state.line})
+            callback({message:"Topic must have name.",file:self.data.files.pop(),line:state.line})
           if state.indent == 0 #define new topic
             if not state.functionObject[text]
               state.functionObject[text] = []
@@ -570,7 +572,7 @@ class Irin
         if fileRequest.readyState == 4 and fileRequest.status == 200
           callback(undefined,fileRequest.responseText)
         else if fileRequest.readyState == 4
-          callback({error:"FILE_NOT_FOUND"})
+          callback({message:"ENOENT: no such file or directory, open '#{file}' "})
       fileRequest.open("GET", file, true)
       fileRequest.send()
 
