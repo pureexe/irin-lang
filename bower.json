@@ -1,15 +1,8 @@
 {
   "name": "irin-lang",
-  "version": "0.0.1",
   "description": "IRIN (Indent to Recognize for Intelligent Natural language) is a scripting language of chatterbots, make you easier to create chatterbot.",
   "main": "irin-lang.min.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pureexe/irin-lang.git"
-  },
+  "moduleType": [],
   "keywords": [
     "bot",
     "chatbot",
@@ -20,10 +13,16 @@
     "chatscript",
     "buddyscript"
   ],
-  "author": "Pakkapon Phongthawee",
+  "authors": [
+    "Pakkapon Phongthawee"
+  ],
   "license": "SEE LICENSE IN LICENSE",
-  "bugs": {
-    "url": "https://github.com/pureexe/irin-lang/issues"
-  },
-  "homepage": "https://github.com/pureexe/irin-lang#readme"
+  "homepage": "https://lang.irin.in.th",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
 }

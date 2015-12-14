@@ -1,7 +1,0 @@
-dist/
-debug/
-lib/
-node_modules/
-src/irin-lang.js
-/brain
-/prototype.coffee
