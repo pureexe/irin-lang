@@ -53,7 +53,7 @@ class Irin
   parseWorker:(file,stack,callback)->
     if stack > @config.includeDepth
       console.error("stack crash")
-      callback({error:"FOREVER_LOOP"})
+      callback({message:"File reading stack more than #{@config.includeDepth} time. Maybe it got forever loop.",file:@data.files.pop()})
     else
       self = @
       @readFile file, (err,steam)->
