@@ -286,7 +286,7 @@ class Irin
   # @param {string} input - input to test expression
   #
   match:(input,expression)->
-    cExp = new RegExp(@toRegular(expression))
+    cExp = new RegExp(@toRegular(expression),"i")
     result = input.match(cExp)
     if result
       result.shift()
@@ -336,7 +336,7 @@ class Irin
                 i++
           else
             if not isNaN(parseInt(buffer))
-              buffer =rData[parseInt(buffer)]
+              buffer =rData[parseInt(buffer)-1]
             else
               buffer = @data.global[buffer]
           frontside = expression.slice(0,front)+buffer
@@ -530,7 +530,7 @@ class Irin
   selectChild: (@text, @head)->
     for child in @head.next
       #this condition need to change to regular expression "later"
-      if answerData = @match(@text.toUpperCase(),child.text.toUpperCase())
+      if answerData = @match(@text,child.text)
         select = Math.floor(Math.random()*child.next.length)
         return {node:child.next[select],data:answerData}
     return undefined
