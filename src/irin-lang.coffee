@@ -117,9 +117,11 @@ class Irin
           else
             state.functionObject[key] = data.functionObject[key]
         state.pastIndent = state.headerDepth
+      # Loop to read file line by line
       while state.line < lines.length
         text = lines[state.line]
         state.indent = self.countIndent(text)
+        # if it header
         if text.trim().indexOf("---") > -1
           if state.readingHeader
             state.readingHeader = false
@@ -142,6 +144,8 @@ class Irin
           else
             state.variable[word[0].trim()] = word[1].trim()
         text = text.trim()
+        if not checkParentesis(text)
+          callback({message:"BRACKET_MISMATCH",file:self.data.files.pop(),line:state.line})
         ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
           state.line++
@@ -207,6 +211,7 @@ class Irin
       # you should parse in this callback and terminate if found include
       # and then cotinue from state when got callback later
     callbackListener()
+
   ##
   # count text indent
   #
@@ -297,7 +302,6 @@ class Irin
   #
   match:(input,expression)->
     cExp = new RegExp(@toRegular(expression))
-
     result = input.match(cExp)
     if result
       result.shift()
@@ -358,6 +362,32 @@ class Irin
         buffer+=ch
       i++
     return expression
+
+  ##
+  # check bracket match correctly
+  # @param {string} line stastement
+  # @return {boolean} is bracket match correctly
+  #
+  checkParentesis = (input)->
+    oprStack = []
+    for ch in input
+      if ch == "{" or ch == "(" or ch == "["
+        oprStack.push(ch)
+      if ch == "}" or ch == ")" or ch == "]"
+        if oprStack.length == 0
+          return false
+        else
+          top = oprStack.pop()
+          if ch == "}" and top != "{"
+            return false
+          if ch == "]" and top != "["
+            return false
+          if ch == ")" and top != "("
+            return false
+    if oprStack.length > 0
+      return false
+    return true
+
   ##
   # convert inlineCondtion to conditonTree
   # Warning: this tree is circular loop don't print it out
