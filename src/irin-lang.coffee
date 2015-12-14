@@ -11,8 +11,6 @@ class Irin
     global: {}
     files: []
   config:
-    indent:
-      len: 2
     includeDepth: 50
   env:
     runtime: 'node'
@@ -25,19 +23,7 @@ class Irin
   # @param {string} steam is input script
   # @param {string} option is configulation
   #
-  constructor: (@file, @option,@callback) ->
-    if typeof @file is 'string'
-      file = @file
-      if typeof @option is 'object'
-        option = @option
-        callback = @callback
-      else
-        callback = @option
-    else if typeof @file is 'object'
-      option = @file
-      callback = @option
-    else if typeof @file is 'function'
-      callback = @file
+  constructor: (file,callback) ->
     @env.runtime = @runtime()
     self = @
     isThrowError = false
@@ -93,7 +79,6 @@ class Irin
       headerDepth: 0
       isAddtoFunction: false
     state.head = state.graph
-    indentLen = @config.indent.len
     self = @
     savedState = []
     callbackListener = (err,data)->
@@ -220,7 +205,7 @@ class Irin
     if indent is -1
       indent = 0
     else
-      indent = indent/@config.indent.len
+      indent = indent
     return indent
   ##
   # remove comment from sourcecode
