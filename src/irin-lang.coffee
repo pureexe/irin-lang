@@ -175,6 +175,7 @@ class Irin
               state.head.push(state.functionObject[text])
             else if state.indent>state.pastIndent
               state.head[state.head.length-1].next = state.functionObject[text]
+            state.pastIndent = state.indent
             state.line++
             continue
         if state.isAddtoFunction and state.indent == 0

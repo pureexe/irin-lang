@@ -1,6 +1,7 @@
 #CHANGELOG
 
 ## v0.0.2
+- fix: topic wrong pointer next node
 - fix: in-line variable work incorrectly because conflict on "==" and "==="
 - fix: error has been detect wrong line
 - fix: crash on answer node is missing
