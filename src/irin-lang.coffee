@@ -66,6 +66,9 @@ class Irin
   #
   parseProcess:(steam,stack,callback)->
     steam = @removeComment steam
+    if steam.message
+      callback({message:steam.message,file:@data.files.pop(),line:steam.line})
+      return undefined
     lines = steam.split("\n")
     state =
       line: 0
@@ -216,7 +219,10 @@ class Irin
     splitSteam = steam.split "\n"
     output = []
     multiComment = false
-    for line in  splitSteam
+    multilineOpen = 0
+    i = 0
+    for line in splitSteam
+      i++
       if line.indexOf("###") > -1
         if multiComment
           multiComment = false
@@ -224,6 +230,7 @@ class Irin
         else
           multiComment = true
           line = line.substring(0,line.indexOf("###"))
+          multilineOpen = i
       else if line.indexOf("#") > -1
         line = line.substring(0,line.indexOf("#"))
       if line.trim().length is 0
@@ -231,7 +238,10 @@ class Irin
       if multiComment
         continue
       output.push line
-    return output.join "\n"
+    if multiComment
+      return {message:"multiline comment must have close tag.",line:multilineOpen+1}
+    else
+      return output.join "\n"
 
   ##
   # Convert from irin expression to regular expression
