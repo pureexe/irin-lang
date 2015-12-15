@@ -37,7 +37,7 @@ class Irin
         self.data.head =  self.data.graph
         self.data.global = cb.variable
         if !isThrowError
-          @data.isReady = true
+          self.data.isReady = true
           callback()
       if err
         callback(err)
@@ -90,9 +90,12 @@ class Irin
     savedState = []
     callbackListener = (err,data)->
       if err
-        state = savedState.pop()
-        self.data.files.pop()
-        callback {message:err.message,file:self.data.files.pop(),line:state.line}
+        if not err.file
+          state = savedState.pop()
+          self.data.files.pop()
+          callback {message:err.message,file:self.data.files.pop(),line:state.line+1}
+        else
+          callback err
       if data
         self.data.files.pop()
         state = savedState.pop()
@@ -121,10 +124,10 @@ class Irin
             state.readingHeader = false
           else
             if state.line != 0
-              callback({message:"Header must declare on top of file only.",file:self.data.files.pop(),line:state.line})
+              callback({message:"Header must declare on top of file only.",file:self.data.files.pop(),line:state.line+1})
               return undefined
             if state.indent != 0
-              callback({message:"Header must have no indent.",file:self.data.files.pop(),line:state.line})
+              callback({message:"Header must have no indent.",file:self.data.files.pop(),line:state.line+1})
               return undefined
             state.headerDepth = state.indent
             state.readingHeader = true
@@ -139,7 +142,8 @@ class Irin
             i++
         text = text.trim()
         if not checkParentesis(text)
-          callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line})
+          callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line+1})
+          return undefined
         ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
           state.line++
@@ -153,7 +157,8 @@ class Irin
           text = text.substring(2,text.length)
           text = text.trim()
           if text == ""
-            callback({message:"Topic must have name.",file:self.data.files.pop(),line:state.line})
+            callback({message:"Topic must have name.",file:self.data.files.pop(),line:state.line+1})
+            return undefined
           if state.indent == 0 #define new topic
             if not state.functionObject[text]
               state.functionObject[text] = []
@@ -210,7 +215,10 @@ class Irin
   # count text indent
   #
   countIndent:(text)->
-    indent = (text.search /\S/)
+    try
+      indent = (text.search /\S/)
+    catch e
+      return 0
     if indent is -1
       indent = 0
     else
@@ -562,13 +570,13 @@ class Irin
     if not @text instanceof String
       return "[Log:Error] reply input text must be a String."
     answer = @selectChild(@text,@data.head)
-    if answer
+    if answer and answer.node
       @data.head = answer.node
       return @mergeExpression(answer.node.text,answer.data)
     else
       @data.head = @data.graph
       answer = @selectChild(@text,@data.head)
-      if answer
+      if answer and answer.node
         @data.head = answer.node
         return @mergeExpression(answer.node.text,answer.data)
       else
