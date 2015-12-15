@@ -558,7 +558,9 @@ class Irin
   #
   reply: (@text)->
     if not @data.isReady
-      return "[Log:Error] can\'t use reply before Irin class callback"
+      return "[Log:Error] can\'t use reply before Irin class callback."
+    if not @text instanceof String
+      return "[Log:Error] reply input text must be a String."
     answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node
@@ -570,7 +572,7 @@ class Irin
         @data.head = answer.node
         return @mergeExpression(answer.node.text,answer.data)
       else
-        return "[Log:Error] answer not found"
+        return "[Log:Error] answer not found."
  ##
  # use to readfile with node and browser
  # @param file path location
