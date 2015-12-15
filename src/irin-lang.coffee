@@ -479,6 +479,19 @@ class Irin
     while oprStack.length>0
       output.push(oprStack.pop())
     return output
+  ##
+  # cast string to boolean if string is true or false
+  # @param {string} string to cast
+  # @return {object|boolean} return boolean if true of false else return object
+  #
+  castBoolean: (input)->
+    if typeof input is "boolean"
+      return input
+    else if typeof input is "string" and input is "true"
+      return true
+    else if typeof input is "string" and input is "false"
+      return false
+    return input
 
   ##
   # processing condition statment is true or false
@@ -489,23 +502,23 @@ class Irin
     bufStack = []
     for word in rpn
       if word is "!"
-        bufStack.push(!bufStack.pop())
+        bufStack.push(!(@castBoolean(bufStack.pop())))
       else if word is "&&"
-        bufStack.push(bufStack.pop()&&bufStack.pop())
+        bufStack.push(@castBoolean(bufStack.pop())&&@castBoolean(bufStack.pop()))
       else if word is "||"
-        bufStack.push(bufStack.pop()||bufStack.pop())
+        bufStack.push(@castBoolean(bufStack.pop())||@castBoolean(bufStack.pop()))
       else if word is "=="
-        bufStack.push(bufStack.pop()==bufStack.pop())
+        bufStack.push(bufStack.pop().toString()==bufStack.pop().toString())
       else if word is "!="
-        bufStack.push(bufStack.pop()!=bufStack.pop())
+        bufStack.push(bufStack.pop().toString()!=bufStack.pop().toString())
       else if word is ">="
-        bufStack.push(bufStack.pop()<=bufStack.pop())
+        bufStack.push(parseFloat(bufStack.pop())<=parseFloat(bufStack.pop()))
       else if word is "<="
-        bufStack.push(bufStack.pop()>=bufStack.pop())
+        bufStack.push(parseFloat(bufStack.pop())>=parseFloat(bufStack.pop()))
       else if word is ">"
-        bufStack.push(bufStack.pop()<bufStack.pop())
+        bufStack.push(parseFloat(bufStack.pop())<parseFloat(bufStack.pop()))
       else if word is "<"
-        bufStack.push(bufStack.pop()>bufStack.pop())
+        bufStack.push(parseFloat(bufStack.pop())>parseFloat(bufStack.pop()))
       else if word is "*"
         bufStack.push(parseFloat(bufStack.pop())*parseFloat(bufStack.pop()))
       else if word is "/"
