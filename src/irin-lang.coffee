@@ -10,6 +10,7 @@ class Irin
     head: []
     global: {}
     files: []
+    isReady: false
   config:
     includeDepth: 50
   env:
@@ -24,6 +25,8 @@ class Irin
   # @param {string} option is configulation
   #
   constructor: (file,callback) ->
+    if not file instanceof String
+      callback({message:"input file path must be a string."})
     @env.runtime = @runtime()
     self = @
     isThrowError = false
@@ -34,6 +37,7 @@ class Irin
         self.data.head =  self.data.graph
         self.data.global = cb.variable
         if !isThrowError
+          @data.isReady = true
           callback()
       if err
         callback(err)
@@ -552,7 +556,9 @@ class Irin
   # @todo make reply to async | i think it ok to use sync mode?
   # @param {string} input text
   #
-  reply: (@text,callback)->
+  reply: (@text)->
+    if not @data.isReady
+      return "[Log:Error] can\'t use reply before Irin class callback"
     answer = @selectChild(@text,@data.head)
     if answer
       @data.head = answer.node
