@@ -567,7 +567,12 @@ class Irin
           bufStack.push(a+b)
       else
         bufStack.push(word)
-    return bufStack[0]
+    if bufStack[0] == "undefined"
+      return undefined
+    else if bufStack[0] == "NaN"
+      return NaN
+    else
+      return bufStack[0]
 
   ##
   # condition statment tree traversal

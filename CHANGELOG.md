@@ -1,5 +1,8 @@
 #CHANGELOG
 
+## v0.0.3
+- fix: inline-condition return true on undefined and NaN
+
 ## v0.0.2
 - fix: topic wrong pointer next node
 - fix: in-line variable work incorrectly because conflict on "==" and "==="
