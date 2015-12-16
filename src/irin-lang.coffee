@@ -73,6 +73,7 @@ class Irin
     if steam.message
       callback({message:steam.message,file:@data.files.pop(),line:steam.line})
       return undefined
+    steam = @reduceIndent steam
     lines = steam.split("\n")
     state =
       line: 0
@@ -201,7 +202,8 @@ class Irin
           else
             state.head = state.graph
           state.pastIndent = state.indent
-          while state.indent != state.pastIndent
+          state.indent = 0
+          while state.indent < state.pastIndent-1
             state.indent++
             state.head = state.head[state.head.length-1].next
           state.head.push {text:text,next:[]}
@@ -225,6 +227,36 @@ class Irin
     else
       indent = indent
     return indent
+
+  ##
+  # Rebuild Indent by use space
+  #
+  buildIndent: (input,indent)->
+    space = ""
+    i = 0
+    while i < indent
+      space +=" "
+      i++
+    return space+input.trim()
+
+  ##
+  # reduceIndent to only one space
+  #
+  reduceIndent: (input)->
+    depthStack = []
+    input = input.split("\n")
+    i=0
+    while i<input.length
+      cnt = @countIndent(input[i])
+      if depthStack.length>0 and cnt < depthStack.slice(-1)[0]
+        while depthStack.length>0 and depthStack.slice(-1)[0] > cnt
+          depthStack.pop()
+      else if cnt>0
+        if depthStack.length==0 or cnt > depthStack.slice(-1)[0]
+          depthStack.push(cnt)
+      input[i] = @buildIndent(input[i],depthStack.length)
+      i++
+    return input.join("\n")
   ##
   # remove comment from sourcecode
   #
