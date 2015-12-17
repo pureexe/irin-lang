@@ -1,7 +1,10 @@
 #CHANGELOG
 
 ## v0.0.3
+- fix: wrong next pointer in method parseProcess
 - fix: inline-condition return true on undefined and NaN
+- fix: undefined on answer {}, it should be empty
+- add: {0} is user input
 
 ## v0.0.2
 - fix: topic wrong pointer next node

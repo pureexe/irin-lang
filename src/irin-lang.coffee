@@ -186,7 +186,7 @@ class Irin
           ## define when tab is equal
           state.head.push {text:text,next:[]}
           if state.head.length > 1 and state.head[state.head.length - 2].next.length == 0
-            state.head[state.head.length - 2].next = state.head[state.head.length - 1].next
+            state.head[state.head.length - 1].next = state.head[state.head.length - 2].next
         else if state.indent > state.pastIndent
           ## define when tab is greater
           state.pastIndent = state.indent
@@ -208,6 +208,7 @@ class Irin
             state.head = state.head[state.head.length-1].next
           state.head.push {text:text,next:[]}
         state.line++
+      console.log JSON.stringify(state.graph,null,1)
       callback(undefined,{graph:state.graph,variable:state.variable,functionObject:state.functionObject})
 
       # you should parse in this callback and terminate if found include
@@ -344,12 +345,8 @@ class Irin
   #
   match:(input,expression)->
     cExp = new RegExp(@toRegular(expression),"i")
-    result = input.match(cExp)
-    if result
-      result.shift()
-      return result
-    else
-      return undefined
+    return input.match(cExp)
+
   ##
   # Merge reply expression with reply data
   # @param {string} expression - the expression
@@ -393,8 +390,8 @@ class Irin
                 i++
           else
             if not isNaN(parseInt(buffer))
-              buffer =rData[parseInt(buffer)-1]
-            else
+              buffer =rData[parseInt(buffer)]
+            else if buffer != ""
               buffer = @data.global[buffer]
           frontside = expression.slice(0,front)+buffer
           i = frontside.length-1
