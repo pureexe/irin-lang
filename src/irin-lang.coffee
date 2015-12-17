@@ -208,7 +208,6 @@ class Irin
             state.head = state.head[state.head.length-1].next
           state.head.push {text:text,next:[]}
         state.line++
-      console.log JSON.stringify(state.graph,null,1)
       callback(undefined,{graph:state.graph,variable:state.variable,functionObject:state.functionObject})
 
       # you should parse in this callback and terminate if found include
