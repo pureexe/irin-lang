@@ -70,10 +70,11 @@ class Irin
   #
   parseProcess:(steam,stack,callback)->
     steam = @removeComment steam
+    if not steam.message
+      steam = @reduceIndent steam
     if steam.message
       callback({message:steam.message,file:@data.files.pop(),line:steam.line})
       return undefined
-    steam = @reduceIndent steam
     lines = steam.split("\n")
     state =
       line: 0
@@ -119,6 +120,10 @@ class Irin
       while state.line < lines.length
         text = lines[state.line]
         state.indent = self.countIndent(text)
+        text = text.trim()
+        if text.length == 0
+          state.line++
+          continue
         # if it header
         if text.trim().indexOf("---") > -1
           if state.readingHeader
@@ -141,7 +146,6 @@ class Irin
           while i < last
             state.variable[word[i].trim()] = word[last].trim()
             i++
-        text = text.trim()
         if not checkParentesis(text)
           callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line+1})
           return undefined
@@ -243,18 +247,24 @@ class Irin
   # reduceIndent to only one space
   #
   reduceIndent: (input)->
-    depthStack = []
+    stack = []
     input = input.split("\n")
     i=0
     while i<input.length
-      cnt = @countIndent(input[i])
-      if depthStack.length>0 and cnt < depthStack.slice(-1)[0]
-        while depthStack.length>0 and depthStack.slice(-1)[0] > cnt
-          depthStack.pop()
-      else if cnt>0
-        if depthStack.length==0 or cnt > depthStack.slice(-1)[0]
-          depthStack.push(cnt)
-      input[i] = @buildIndent(input[i],depthStack.length)
+      if input[i].trim().length != 0
+        cnt = @countIndent(input[i])
+        if stack.length ==0
+          stack.push(cnt)
+        if stack.slice(-1)[0] > cnt
+          while stack.length >0 and stack.slice(-1)[0] != cnt
+            if stack.slice(-1)[0] < cnt
+              return {message:"unexpected indentation.",line:i+1}
+            stack.pop()
+          if stack.length == 0
+            return {message:"unexpected indentation.",line:i+1}
+        else if stack.slice(-1)[0] < cnt
+          stack.push(cnt)
+        input[i] = @buildIndent(input[i],stack.length-1)
       i++
     return input.join("\n")
   ##
@@ -278,8 +288,6 @@ class Irin
           multilineOpen = i
       else if line.indexOf("#") > -1
         line = line.substring(0,line.indexOf("#"))
-      if line.trim().length is 0
-        continue
       if multiComment
         continue
       output.push line

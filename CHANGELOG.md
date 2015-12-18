@@ -1,5 +1,8 @@
 #CHANGELOG
 
+## v0.0.4
+- add: error unexpected indentation
+
 ## v0.0.3
 - fix: wrong next pointer in method parseProcess
 - fix: inline-condition return true on undefined and NaN
