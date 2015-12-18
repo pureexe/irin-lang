@@ -1,6 +1,6 @@
 {
   "name": "irin-lang",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "IRIN (Indent to Recognize for Intelligent Natural language) is a scripting language of chatterbots, make you easier to create chatterbot.",
   "main": "irin-lang.min.js",
   "scripts": {
