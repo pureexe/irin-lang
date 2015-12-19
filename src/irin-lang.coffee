@@ -129,12 +129,8 @@ class Irin
           if state.readingHeader
             state.readingHeader = false
           else
-            if state.line != 0
-              callback({message:"Header must declare on top of file only.",file:self.data.files.pop(),line:state.line+1})
-              return undefined
-            if state.indent != 0
-              callback({message:"Header must have no indent.",file:self.data.files.pop(),line:state.line+1})
-              return undefined
+            if state.graph.length != 0
+              return callback({message:"Header must declare on top of file only.",file:self.data.files.pop(),line:state.line+1})
             state.headerDepth = state.indent
             state.readingHeader = true
           state.line++
@@ -144,11 +140,15 @@ class Irin
           last = word.length-1
           i = 0
           while i < last
-            state.variable[word[i].trim()] = word[last].trim()
+            if not isNaN(parseFloat word[i].trim())
+              return callback({message:"Variable name must not start with number",file:self.data.files.pop(),line:state.line+1})
+            if not state.variable[word[i].trim()]
+              state.variable[word[i].trim()] = word[last].trim()
             i++
+          state.line++
+          continue
         if not checkParentesis(text)
-          callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line+1})
-          return undefined
+          return callback({message:"Bracket is mismatch.",file:self.data.files.pop(),line:state.line+1})
         ## Reading Thread operator (->)
         if text.substring(0,2) == "->" and text.substring(text.length-5,text.length)==".irin"
           state.line++
@@ -158,6 +158,8 @@ class Irin
           self.data.files.push(fileAddr)
           self.parseWorker(fileAddr,stack+1,callbackListener)
           return undefined
+        else if state.readingHeader
+          return callback({message:"Unexpected declaration in header.",file:self.data.files.pop(),line:state.line+1});
         else if text.substring(0,2) == "->"
           text = text.substring(2,text.length)
           text = text.trim()
@@ -279,13 +281,17 @@ class Irin
     for line in splitSteam
       i++
       if line.indexOf("###") > -1
-        if multiComment
-          multiComment = false
-          line = line.substring(line.indexOf("###")+3,line.length)
-        else
-          multiComment = true
-          line = line.substring(0,line.indexOf("###"))
-          multilineOpen = i
+        while front = line.indexOf("###") > -1
+          if multiComment
+            line = line.substring(rear+3,line.length)
+            multiComment = !multiComment
+          else
+            if rear = line.indexOf("###",front+1)
+              line = line.substring(0,front-1)+line.substring(rear+3,line.length)
+            else
+              line = line.substring(0,front+1)
+              multiComment = !multiComment
+              multilineOpen = i
       else if line.indexOf("#") > -1
         line = line.substring(0,line.indexOf("#"))
       if multiComment

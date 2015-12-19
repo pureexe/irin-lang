@@ -1,7 +1,12 @@
 #CHANGELOG
 
 ## v0.0.4
+- fix: declare variable which isn't following top-down law
+- fix: `###` multiline comment working incorrectly  `###`
+- add: error Unexpected declaration in header.
+- add: error Variable name must not start with number.
 - add: error unexpected indentation
+- remove: error Header must have no indent. (replace by unexpected indentation)
 
 ## v0.0.3
 - fix: wrong next pointer in method parseProcess
@@ -11,7 +16,7 @@
 
 ## v0.0.2
 - fix: topic wrong pointer next node
-- fix: in-line variable work incorrectly because conflict on "==" and "==="
+- fix: in-line variable work incorrectly because conflict on `==` and `===`
 - fix: error has been detect wrong line
 - fix: crash on answer node is missing
 - fix: crash on reply parameter is empty string
