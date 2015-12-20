@@ -317,6 +317,8 @@ class Irin
         while expression[i+j] != "]"
           j++
         optionals = expression.substring(i+1,i+j).split("|")
+        for option,index in optionals
+          optionals[index] = @escape(optionals[index])
         if i+j<expression.length and expression[i+j+1]==" "
           k = 0
           while k < optionals.length
@@ -335,6 +337,16 @@ class Irin
         optionals = optionals.join("|")
         optionals = optionals.replace(new RegExp(@escape("(.+)"), "g"),"(?:.+)")
         regularExp+="(?:"+optionals+")"
+        i+=j+1
+      else if expression[i] == "("
+        j = 0
+        while expression[i+j] != ")"
+          j++
+        optionals = expression.substring(i+1,i+j).split("|")
+        for option,index in optionals
+          optionals[index] = @escape(optionals[index])
+        optionals = optionals.join("|")
+        regularExp+="("+optionals+")"
         i+=j+1
       else
         regularExp+=expression[i]
@@ -357,6 +369,7 @@ class Irin
   # @param {string} input - input to test expression
   #
   match:(input,expression)->
+    console.log @toRegular(expression)
     cExp = new RegExp(@toRegular(expression),"i")
     return input.match(cExp)
 
