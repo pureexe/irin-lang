@@ -308,17 +308,15 @@ class Irin
   #
   toRegular:(expression)->
     expression = @mergeExpression(expression)
+    expression = @escape(expression)
     regularExp = ""
-    expression = expression.replace(/\*/g, "(.+)")
     i = 0
     while i < expression.length
-      if expression[i] == "["
-        j = 0
+      if expression[i]+expression[i+1] == "\\["
+        j = 1
         while expression[i+j] != "]"
           j++
-        optionals = expression.substring(i+1,i+j).split("|")
-        for option,index in optionals
-          optionals[index] = @escape(optionals[index])
+        optionals = expression.substring(i+2,i+j-1).split("\\|")
         if i+j<expression.length and expression[i+j+1]==" "
           k = 0
           while k < optionals.length
@@ -335,22 +333,20 @@ class Irin
         else
           optionals.unshift("")
         optionals = optionals.join("|")
-        optionals = optionals.replace(new RegExp(@escape("(.+)"), "g"),"(?:.+)")
+        optionals = optionals.replace(new RegExp("\\*", "g"),"(?:.+)")
         regularExp+="(?:"+optionals+")"
         i+=j+1
-      else if expression[i] == "("
-        j = 0
+      else if expression[i]+expression[i+1] == "\\("
+        j = 1
         while expression[i+j] != ")"
           j++
-        optionals = expression.substring(i+1,i+j).split("|")
-        for option,index in optionals
-          optionals[index] = @escape(optionals[index])
-        optionals = optionals.join("|")
-        regularExp+="("+optionals+")"
+        optionals = expression.substring(i+2,i+j-1).split("\\|")
+        regularExp += "("+optionals.join("|")+")"
         i+=j+1
       else
         regularExp+=expression[i]
         i++
+    regularExp = regularExp.replace(new RegExp(@escape("\\*"),"g"), "(.+)")
     return "^"+regularExp+"$"
 
   ##
@@ -369,7 +365,6 @@ class Irin
   # @param {string} input - input to test expression
   #
   match:(input,expression)->
-    console.log @toRegular(expression)
     cExp = new RegExp(@toRegular(expression),"i")
     return input.match(cExp)
 
