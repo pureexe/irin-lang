@@ -4,6 +4,7 @@
 - fix: regular expression escape
 - fix: declare variable which isn't following top-down law
 - fix: `###` multiline comment working incorrectly  `###`
+- add: support data<-{other_variable}+5 in header
 - add: error Unexpected declaration in header.
 - add: error Variable name must not start with number.
 - add: error unexpected indentation

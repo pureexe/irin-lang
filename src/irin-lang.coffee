@@ -142,8 +142,11 @@ class Irin
           while i < last
             if not isNaN(parseFloat word[i].trim())
               return callback({message:"Variable name must not start with number",file:self.data.files.pop(),line:state.line+1})
+            rData = word[last].trim()
+            if rData.indexOf("{") > -1
+              rData = self.compileOperator(self.mergeExpression(rData,state.variable))
             if not state.variable[word[i].trim()]
-              state.variable[word[i].trim()] = word[last].trim()
+              state.variable[word[i].trim()] = rData
             i++
           state.line++
           continue
@@ -413,7 +416,10 @@ class Irin
             if not isNaN(parseInt(buffer))
               buffer =rData[parseInt(buffer)]
             else if buffer != ""
-              buffer = @data.global[buffer]
+              if rData != undefined and not(rData instanceof Array)
+                buffer = rData[buffer]
+              else
+                buffer = @data.global[buffer]
           frontside = expression.slice(0,front)+buffer
           i = frontside.length-1
           expression = frontside+expression.slice(rear+1)
