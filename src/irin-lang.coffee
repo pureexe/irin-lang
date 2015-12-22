@@ -141,7 +141,7 @@ class Irin
           i = 0
           while i < last
             if not isNaN(parseFloat word[i].trim())
-              return callback({message:"Variable name must not start with number",file:self.data.files.pop(),line:state.line+1})
+              return callback({message:"Variable name must not start with number.",file:self.data.files.pop(),line:state.line+1})
             rData = word[last].trim()
             if rData.indexOf("{") > -1
               rData = self.compileOperator(self.mergeExpression(rData,state.variable))
@@ -579,9 +579,13 @@ class Irin
       else if word is "*"
         bufStack.push(parseFloat(bufStack.pop())*parseFloat(bufStack.pop()))
       else if word is "/"
-        bufStack.push(parseFloat(bufStack.pop())/parseFloat(bufStack.pop()))
+        a = parseFloat(bufStack.pop())
+        b = parseFloat(bufStack.pop())
+        bufStack.push(b/a)
       else if word is "-"
-        bufStack.push(parseFloat(bufStack.pop())-parseFloat(bufStack.pop()))
+        a = parseFloat(bufStack.pop())
+        b = parseFloat(bufStack.pop())
+        bufStack.push(b-a)
       else if word is "+"
         a = bufStack.pop()
         b = bufStack.pop()

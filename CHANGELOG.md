@@ -1,6 +1,7 @@
 #CHANGELOG
 
 ## v0.0.4
+- fix: expression `-` and `/` is wrong because stack popping error.
 - fix: regular expression escape
 - fix: declare variable which isn't following top-down law
 - fix: `###` multiline comment working incorrectly  `###`
