@@ -158,6 +158,7 @@ class Irin
           state.headerDepth = state.indent
           savedState.push(state)
           fileAddr = text.trim().substring(2,text.length).trim()
+          fileAddr = self.getDirPath()+"/"+fileAddr
           self.data.files.push(fileAddr)
           self.parseWorker(fileAddr,stack+1,callbackListener)
           return undefined
@@ -272,6 +273,21 @@ class Irin
         input[i] = @buildIndent(input[i],stack.length-1)
       i++
     return input.join("\n")
+  ##
+  # get file directory path
+  #
+  getDirPath: ()->
+    lastFile = @data.files.slice(-1)[0]
+    if lastFile is null
+      return "/"
+    if lastFile.indexOf("/") > -1
+      lastFile = lastFile.split("/")
+      lastFile.pop()
+      lastFile = lastFile.join("/")
+      if lastFile is ""
+        return "/"
+      return lastFile
+    return "/"
   ##
   # remove comment from sourcecode
   #
