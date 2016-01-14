@@ -352,7 +352,7 @@ class Irin
         else
           optionals.unshift("")
         optionals = optionals.join("|")
-        optionals = optionals.replace(new RegExp("\\*", "g"),"(?:.+)")
+        optionals = optionals.replace(new RegExp("\\\\\\*", "g"),"(?:.+)")
         regularExp+="(?:"+optionals+")"
         i+=j+1
       else if expression[i]+expression[i+1] == "\\("
@@ -428,6 +428,8 @@ class Irin
               while i < last
                 @data.global[newData[i].trim()] = assignData
                 i++
+          else if @hasOperator(buffer)
+            buffer = @compileOperator(buffer)
           else
             if not isNaN(parseInt(buffer))
               buffer =rData[parseInt(buffer)]
@@ -507,6 +509,11 @@ class Irin
     oprs = ["(",")","!","&&","||","==","!=",">=","<=",">","<","*","/","+","-"]
     for opr in oprs
       if input is opr
+        return true
+    return false
+  hasOperator: (input)->
+    for ch in input
+      if @checkOperator(ch)
         return true
     return false
 
@@ -606,9 +613,9 @@ class Irin
         a = bufStack.pop()
         b = bufStack.pop()
         if not isNaN(parseFloat(a)) and not isNaN(parseFloat(b))
-          bufStack.push(parseFloat(a)+parseFloat(b))
+          bufStack.push(parseFloat(b)+parseFloat(a))
         else
-          bufStack.push(a+b)
+          bufStack.push(b+a)
       else
         bufStack.push(word)
     if bufStack[0] == "undefined"

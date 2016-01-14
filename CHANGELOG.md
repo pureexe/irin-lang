@@ -1,5 +1,10 @@
 #CHANGELOG
 
+## v0.0.5
+- fix: crash on use `[*]` operator
+- fix: {a+1} isn't return a1
+- fix: {5+1} isn't return 6
+
 ## v0.0.4
 - fix: `->` on difference directory
 - fix: expression `-` and `/` is wrong because stack popping error.
