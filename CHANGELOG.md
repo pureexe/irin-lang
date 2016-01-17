@@ -1,5 +1,8 @@
 #CHANGELOG
 
+## v0.0.6
+- fix: tokenizeOperator return without trim
+
 ## v0.0.5
 - fix: crash on use `[*]` operator
 - fix: {a+1} isn't return a1

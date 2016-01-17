@@ -20,7 +20,6 @@ class Irin
 
   ##
   # just a simple class constructor
-  # @todo implement browser input
   # @param {string} steam is input script
   # @param {string} option is configulation
   #
@@ -45,18 +44,20 @@ class Irin
 
   ##
   # Convert from irin script to data graph
-  # @todo syntax check before parse
-  # @param {string} file - filelocation
+  # @param {string} file - file path
   # @param {function} callback - filelocation
+  #
   parse:(file,callback) ->
     @parseWorker(file,0,callback)
 
   ##
   # worker for parse function to async problem
+  # @param {string} file - file path
+  # @param {integer} recursive count
+  # @param {function} callback
   #
   parseWorker:(file,stack,callback)->
     if stack > @config.includeDepth
-      console.error("stack crash")
       callback({message:"File reading stack more than #{@config.includeDepth} time. Maybe it got forever loop.",file:@data.files.pop()})
     else
       self = @
@@ -511,12 +512,20 @@ class Irin
       if input is opr
         return true
     return false
+  ##
+  # check is has operator in input string
+  # @param {string} input string to check operator
+  #
   hasOperator: (input)->
     for ch in input
       if @checkOperator(ch)
         return true
     return false
 
+  ##
+  # split string input to array seperate with operator
+  # @param {string} input string
+  #
   tokenizeOperator: (input)->
     input = [input]
     buffer = []
@@ -528,7 +537,7 @@ class Irin
           buffer2 = word.split(opr)
           for b in buffer2
             if b != ''
-              buffer.push(b)
+              buffer.push(b.trim())
             buffer.push(opr)
           buffer.pop()
         else
