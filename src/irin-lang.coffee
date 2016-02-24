@@ -306,7 +306,7 @@ class Irin
             line = line.substring(rear+3,line.length)
             multiComment = !multiComment
           else
-            if rear = line.indexOf("###",front+1)
+            if rear = line.indexOf("###",front+1) !=-1
               line = line.substring(0,front-1)+line.substring(rear+3,line.length)
             else
               line = line.substring(0,front+1)
@@ -315,6 +315,7 @@ class Irin
       else if line.indexOf("#") > -1
         line = line.substring(0,line.indexOf("#"))
       if multiComment
+        line = ""
         continue
       output.push line
     if multiComment

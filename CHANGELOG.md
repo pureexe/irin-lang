@@ -1,6 +1,7 @@
 #CHANGELOG
 
 ## v0.0.6
+- fix: `###` multiline comment working incorrectly  `###`
 - fix: tokenizeOperator return without trim
 
 ## v0.0.5
